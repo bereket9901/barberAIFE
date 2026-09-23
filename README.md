@@ -182,31 +182,37 @@ POST   /api/ai/detect                 # Simulate AI detection
 
 ## 🔌 Frontend-Backend Integration
 
-The frontend includes an API client (`src/lib/api.ts`) ready to connect to the backend:
+✅ **The frontend is fully connected to the backend!**
 
-```typescript
-import { servicesAPI, sessionsAPI, transactionsAPI } from './lib/api';
+The frontend automatically fetches data from the backend API:
+- Services, sessions, transactions, cameras, and activity log
+- All CRUD operations are connected
+- Real-time updates when data changes
 
-// Fetch services from backend
-const services = await servicesAPI.getAll();
+### How It Works
 
-// Create a new session
-const session = await sessionsAPI.create({
-  chairId: '1',
-  customerName: 'Customer #1050',
-  customerId: '1050',
-  barberId: 'b1',
-  barberName: 'Dawit'
-});
+1. **Frontend Store** (`src/store.ts`) uses API client to fetch data
+2. **API Client** (`src/lib/api.ts`) makes HTTP requests to backend
+3. **Backend** (`backend/`) processes requests and returns data
+4. **Database** (`backend/data/barberai.json`) stores all data
 
-// Process payment
-const transaction = await transactionsAPI.create({
-  sessionId: session.data.id,
-  paymentMethod: 'telebirr'
-});
+### Quick Test
+
+```bash
+# Terminal 1 - Start backend
+cd backend
+npm install
+npm run seed
+npm run dev
+
+# Terminal 2 - Start frontend
+npm run dev
+
+# Open browser
+# http://localhost:5173
 ```
 
-See `INTEGRATION_GUIDE.md` for detailed integration instructions.
+See `TESTING_GUIDE.md` for complete testing instructions.
 
 ## 🗄️ Database
 
