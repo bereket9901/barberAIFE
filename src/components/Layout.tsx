@@ -1,5 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
+import { cn } from '../lib/utils';
+import { Button } from './ui/button';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
   Moon, Sun, Zap
@@ -24,90 +26,79 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
   const { systemStatus, darkMode, toggleDarkMode } = useStore();
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={cn("min-h-screen", darkMode && "dark")}>
       {/* Top Navigation */}
-      <header className={`${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-b px-6 py-3`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white" />
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-8">
+              {/* Logo */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                  <Zap className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">BarberAI</h1>
+                  <p className="text-xs text-muted-foreground">Visual Service & Payment Counter</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold tracking-tight">BarberAI</h1>
-                <p className="text-[10px] text-gray-400 -mt-0.5">Visual Service & Payment Counter</p>
-              </div>
+
+              {/* Navigation */}
+              <nav className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => (
+                  <Button
+                    key={item.id}
+                    variant={currentPage === item.id ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => onNavigate(item.id)}
+                    className="gap-2"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                ))}
+              </nav>
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    currentPage === item.id
-                      ? darkMode
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-emerald-50 text-emerald-700'
-                      : darkMode
-                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+            {/* Status & Controls */}
+            <div className="flex items-center gap-4">
+              {/* System Status */}
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                AI System Online
+              </div>
 
-          {/* Status & Controls */}
-          <div className="flex items-center gap-4">
-            {/* System Status */}
-            <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-              darkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
-            }`}>
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              AI System Online
+              {/* Dark mode toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDarkMode}
+              >
+                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
             </div>
-
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
-            >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
           </div>
-        </div>
 
-        {/* Mobile Nav */}
-        <div className="md:hidden flex items-center gap-1 mt-2 overflow-x-auto pb-1">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                currentPage === item.id
-                  ? darkMode
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-emerald-50 text-emerald-700'
-                  : darkMode
-                    ? 'text-gray-400'
-                    : 'text-gray-600'
-              }`}
-            >
-              <item.icon className="w-3.5 h-3.5" />
-              {item.label}
-            </button>
-          ))}
+          {/* Mobile Nav */}
+          <div className="md:hidden flex items-center gap-1 overflow-x-auto pb-2">
+            {navItems.map((item) => (
+              <Button
+                key={item.id}
+                variant={currentPage === item.id ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => onNavigate(item.id)}
+                className="gap-1.5 whitespace-nowrap"
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="p-4 md:p-6 max-w-[1600px] mx-auto">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
         {children}
       </main>
     </div>

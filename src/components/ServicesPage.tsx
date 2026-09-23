@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { cn } from '../lib/utils';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Badge } from './ui/badge';
 import { Plus, Edit2, Trash2, X, Check, Scissors } from 'lucide-react';
 import type { ServiceType } from '../types';
 
@@ -42,195 +49,185 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Service Management</h2>
-          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Configure services and pricing for your barber shop
-          </p>
+          <h2 className="text-3xl font-bold tracking-tight">Service Management</h2>
+          <p className="text-muted-foreground">Configure services and pricing for your barber shop</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-sm rounded-xl hover:shadow-lg transition-all"
-        >
-          <Plus className="w-4 h-4" />
+        <Button onClick={() => setShowAddForm(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
           Add Service
-        </button>
+        </Button>
       </div>
 
       {/* Add Service Form */}
       {showAddForm && (
-        <div className={`p-6 rounded-xl border ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className="text-lg font-semibold mb-4">New Service</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-xs font-medium text-gray-400 mb-1 block">Service Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}
-                placeholder="e.g., Haircut"
-              />
+        <Card>
+          <CardHeader>
+            <CardTitle>New Service</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Service Name</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Haircut"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Type</label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as ServiceType })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="haircut">Haircut</SelectItem>
+                    <SelectItem value="beard_trim">Beard Trim</SelectItem>
+                    <SelectItem value="hair_wash">Hair Wash</SelectItem>
+                    <SelectItem value="shaving">Shaving</SelectItem>
+                    <SelectItem value="hair_coloring">Hair Coloring</SelectItem>
+                    <SelectItem value="facial">Facial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price (ETB)</label>
+                <Input
+                  type="number"
+                  value={formData.price || ''}
+                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  placeholder="300"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration (min)</label>
+                <Input
+                  type="number"
+                  value={formData.duration || ''}
+                  onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
+                  placeholder="30"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-gray-400 mb-1 block">Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as ServiceType })}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}
-              >
-                <option value="haircut">Haircut</option>
-                <option value="beard_trim">Beard Trim</option>
-                <option value="hair_wash">Hair Wash</option>
-                <option value="shaving">Shaving</option>
-                <option value="hair_coloring">Hair Coloring</option>
-                <option value="facial">Facial</option>
-              </select>
+            <div className="flex gap-3 mt-4">
+              <Button onClick={handleAdd}>Save Service</Button>
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
             </div>
-            <div>
-              <label className="text-xs font-medium text-gray-400 mb-1 block">Price (ETB)</label>
-              <input
-                type="number"
-                value={formData.price || ''}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}
-                placeholder="300"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-400 mb-1 block">Duration (min)</label>
-              <input
-                type="number"
-                value={formData.duration || ''}
-                onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-                className={`w-full px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}
-                placeholder="30"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <button onClick={handleAdd} className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600">
-              Save Service
-            </button>
-            <button onClick={() => setShowAddForm(false)} className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'}`}>
-              Cancel
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Services Table */}
-      <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className={darkMode ? 'bg-gray-800/50' : 'bg-gray-50'}>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Service</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Price</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
+      <Card>
+        <CardContent className="pt-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Service</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {services.map((service) => (
-                <tr key={service.id} className={`${darkMode ? 'hover:bg-gray-800/30' : 'hover:bg-gray-50'} transition-colors`}>
+                <TableRow key={service.id}>
                   {editingId === service.id ? (
                     <>
-                      <td className="px-6 py-4">
-                        <input
-                          type="text"
+                      <TableCell>
+                        <Input
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className={`px-2 py-1 rounded border text-sm w-full ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                          className="h-8"
                         />
-                      </td>
-                      <td className="px-6 py-4">
-                        <select
-                          value={formData.type}
-                          onChange={(e) => setFormData({ ...formData, type: e.target.value as ServiceType })}
-                          className={`px-2 py-1 rounded border text-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
-                        >
-                          <option value="haircut">haircut</option>
-                          <option value="beard_trim">beard_trim</option>
-                          <option value="hair_wash">hair_wash</option>
-                          <option value="shaving">shaving</option>
-                          <option value="hair_coloring">hair_coloring</option>
-                          <option value="facial">facial</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <input
+                      </TableCell>
+                      <TableCell>
+                        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as ServiceType })}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="haircut">haircut</SelectItem>
+                            <SelectItem value="beard_trim">beard_trim</SelectItem>
+                            <SelectItem value="hair_wash">hair_wash</SelectItem>
+                            <SelectItem value="shaving">shaving</SelectItem>
+                            <SelectItem value="hair_coloring">hair_coloring</SelectItem>
+                            <SelectItem value="facial">facial</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
                           type="number"
                           value={formData.price || ''}
                           onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                          className={`px-2 py-1 rounded border text-sm w-24 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                          className="h-8 w-24"
                         />
-                      </td>
-                      <td className="px-6 py-4">
-                        <input
+                      </TableCell>
+                      <TableCell>
+                        <Input
                           type="number"
                           value={formData.duration || ''}
                           onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-                          className={`px-2 py-1 rounded border text-sm w-20 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                          className="h-8 w-20"
                         />
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`text-xs px-2 py-1 rounded-full ${service.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={service.enabled ? "default" : "secondary"}>
                           {service.enabled ? 'Active' : 'Disabled'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => handleUpdate(service.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => setEditingId(null)} className="p-1.5 bg-gray-500/20 text-gray-400 rounded hover:bg-gray-500/30">
-                            <X className="w-4 h-4" />
-                          </button>
+                          <Button size="icon" variant="ghost" onClick={() => handleUpdate(service.id)}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </td>
+                      </TableCell>
                     </>
                   ) : (
                     <>
-                      <td className="px-6 py-4">
+                      <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                            <Scissors className="w-4 h-4 text-emerald-500" />
+                          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                            <Scissors className="h-4 w-4 text-primary" />
                           </div>
-                          <span className="font-medium text-sm">{service.name}</span>
+                          <span className="font-medium">{service.name}</span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <code className={`text-xs px-2 py-1 rounded ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                          {service.type}
-                        </code>
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-sm">{service.price} ETB</td>
-                      <td className="px-6 py-4 text-sm text-gray-400">{service.duration} min</td>
-                      <td className="px-6 py-4">
-                        <span className={`text-xs px-2 py-1 rounded-full ${service.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs px-2 py-1 rounded bg-muted">{service.type}</code>
+                      </TableCell>
+                      <TableCell className="font-semibold">{service.price} ETB</TableCell>
+                      <TableCell className="text-muted-foreground">{service.duration} min</TableCell>
+                      <TableCell>
+                        <Badge variant={service.enabled ? "default" : "secondary"}>
                           {service.enabled ? 'Active' : 'Disabled'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => startEdit(service)} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => deleteService(service.id)} className="p-1.5 hover:bg-red-500/20 rounded text-gray-400 hover:text-red-400">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <Button size="icon" variant="ghost" onClick={() => startEdit(service)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteService(service.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
-                      </td>
+                      </TableCell>
                     </>
                   )}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

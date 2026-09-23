@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { cn } from '../lib/utils';
+import { Card, CardContent } from './ui/card';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Badge } from './ui/badge';
 import { Search, Filter, Receipt, CreditCard, Banknote } from 'lucide-react';
 
 export default function TransactionsPage() {
@@ -28,8 +34,8 @@ export default function TransactionsPage() {
   };
 
   const getPaymentMethodIcon = (method: string) => {
-    if (method === 'cash') return <Banknote className="w-4 h-4" />;
-    return <CreditCard className="w-4 h-4" />;
+    if (method === 'cash') return <Banknote className="h-4 w-4" />;
+    return <CreditCard className="h-4 w-4" />;
   };
 
   const formatTime = (timestamp: string) => {
@@ -45,136 +51,130 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Transaction History</h2>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          All completed transactions and payment records
-        </p>
+        <h2 className="text-3xl font-bold tracking-tight">Transaction History</h2>
+        <p className="text-muted-foreground">All completed transactions and payment records</p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by customer, barber, or transaction ID..."
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${
-              darkMode ? 'bg-gray-900 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200 placeholder:text-gray-400'
-            }`}
+            className="pl-10"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
-          <select
-            value={filterMethod}
-            onChange={(e) => setFilterMethod(e.target.value)}
-            className={`px-4 py-2.5 rounded-xl border text-sm ${
-              darkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-200'
-            }`}
-          >
-            <option value="all">All Methods</option>
-            <option value="telebirr">Telebirr</option>
-            <option value="cbe_birr">CBE Birr</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-          </select>
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterMethod} onValueChange={setFilterMethod}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Methods</SelectItem>
+              <SelectItem value="telebirr">Telebirr</SelectItem>
+              <SelectItem value="cbe_birr">CBE Birr</SelectItem>
+              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="card">Card</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'}`}>
-          <p className="text-xs text-gray-400 mb-1">Total Transactions</p>
-          <p className="text-2xl font-bold">{filteredTransactions.length}</p>
-        </div>
-        <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'}`}>
-          <p className="text-xs text-gray-400 mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-emerald-500">
-            {filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()} ETB
-          </p>
-        </div>
-        <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'}`}>
-          <p className="text-xs text-gray-400 mb-1">Avg. Transaction</p>
-          <p className="text-2xl font-bold">
-            {filteredTransactions.length > 0
-              ? Math.round(filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0) / filteredTransactions.length)
-              : 0} ETB
-          </p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Total Transactions</p>
+            <p className="text-2xl font-bold">{filteredTransactions.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Total Revenue</p>
+            <p className="text-2xl font-bold text-primary">
+              {filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()} ETB
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Avg. Transaction</p>
+            <p className="text-2xl font-bold">
+              {filteredTransactions.length > 0
+                ? Math.round(filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0) / filteredTransactions.length)
+                : 0} ETB
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Transactions Table */}
-      <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className={darkMode ? 'bg-gray-800/50' : 'bg-gray-50'}>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Transaction ID</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Customer</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Barber</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Services</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Date/Time</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-gray-800' : 'divide-gray-100'}`}>
+      <Card>
+        <CardContent className="pt-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Transaction ID</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Barber</TableHead>
+                <TableHead>Services</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Date/Time</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
-                    <Receipt className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                    <p className="text-gray-400 text-sm">No transactions found</p>
-                  </td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No transactions found</p>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className={`${darkMode ? 'hover:bg-gray-800/30' : 'hover:bg-gray-50'} transition-colors`}>
-                    <td className="px-6 py-4">
-                      <code className={`text-xs font-mono px-2 py-1 rounded ${darkMode ? 'bg-gray-800 text-emerald-400' : 'bg-gray-100 text-emerald-600'}`}>
+                  <TableRow key={tx.id}>
+                    <TableCell>
+                      <code className="text-xs font-mono px-2 py-1 rounded bg-muted text-primary">
                         {tx.transactionId}
                       </code>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">{tx.customerName}</td>
-                    <td className="px-6 py-4 text-sm">{tx.barberName}</td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="font-medium">{tx.customerName}</TableCell>
+                    <TableCell>{tx.barberName}</TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {tx.services.map((svc, i) => (
-                          <span key={i} className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                          <Badge key={i} variant="secondary" className="text-xs">
                             {svc}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-sm text-emerald-500">{tx.amount} ETB</td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="font-semibold text-primary">{tx.amount} ETB</TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         {getPaymentMethodIcon(tx.paymentMethod)}
-                        <span className="text-sm">{getPaymentMethodLabel(tx.paymentMethod)}</span>
+                        <span>{getPaymentMethodLabel(tx.paymentMethod)}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{formatTime(tx.timestamp)}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        tx.status === 'paid'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : tx.status === 'pending'
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-red-500/20 text-red-400'
-                      }`}>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{formatTime(tx.timestamp)}</TableCell>
+                    <TableCell>
+                      <Badge variant={tx.status === 'paid' ? 'default' : tx.status === 'pending' ? 'secondary' : 'destructive'}>
                         {tx.status === 'paid' ? '✓ Paid' : tx.status}
-                      </span>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
