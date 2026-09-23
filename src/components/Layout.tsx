@@ -1,10 +1,9 @@
 import React from 'react';
 import { useStore } from '../store';
 import { cn } from '../lib/utils';
-import { Button } from './ui/button';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
-  Zap
+  Zap, Bell, Search
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -26,72 +25,95 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
   const { systemStatus } = useStore();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-8">
-              {/* Logo */}
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                  <Zap className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold">BarberAI</h1>
-                  <p className="text-xs text-muted-foreground">Visual Service & Payment Counter</p>
-                </div>
-              </div>
-
-              {/* Navigation */}
-              <nav className="hidden md:flex items-center gap-1">
-                {navItems.map((item) => (
-                  <Button
-                    key={item.id}
-                    variant={currentPage === item.id ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => onNavigate(item.id)}
-                    className="gap-2"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                ))}
-              </nav>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-card border-r border-border flex flex-col fixed h-screen">
+        {/* Logo */}
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
+              <Zap className="h-5 w-5 text-white" />
             </div>
-
-            {/* Status & Controls */}
-            <div className="flex items-center gap-4">
-              {/* System Status */}
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                AI System Online
-              </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">BarberAI</h1>
+              <p className="text-xs text-muted-foreground">Visual Counter</p>
             </div>
-          </div>
-
-          {/* Mobile Nav */}
-          <div className="md:hidden flex items-center gap-1 overflow-x-auto pb-2">
-            {navItems.map((item) => (
-              <Button
-                key={item.id}
-                variant={currentPage === item.id ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => onNavigate(item.id)}
-                className="gap-1.5 whitespace-nowrap"
-              >
-                <item.icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Button>
-            ))}
           </div>
         </div>
-      </header>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                currentPage === item.id
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* System Status */}
+        <div className="p-4 border-t border-border">
+          <div className="bg-accent/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-medium text-foreground">AI System Online</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
+              <div>Cameras: {systemStatus.camerasConnected}/{systemStatus.cameras}</div>
+              <div>Detection: Active</div>
+            </div>
+          </div>
+        </div>
+      </aside>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
-        {children}
-      </main>
+      <div className="flex-1 ml-64">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border">
+          <div className="flex items-center justify-between h-16 px-8">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                {navItems.find(item => item.id === currentPage)?.label || 'Dashboard'}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {currentPage === 'dashboard' && 'Real-time AI-powered service detection & billing'}
+                {currentPage === 'cameras' && 'Live monitoring of all barber chairs'}
+                {currentPage === 'customers' && 'Active and recent customer sessions'}
+                {currentPage === 'transactions' && 'Payment history and records'}
+                {currentPage === 'services' && 'Manage services and pricing'}
+                {currentPage === 'settings' && 'System configuration'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors">
+                <Search className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors relative">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center">3</span>
+              </button>
+              <div className="h-9 w-9 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-medium">
+                A
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

@@ -3,15 +3,14 @@ import { useStore } from '../store';
 import { runDemoSimulation } from '../simulation';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Separator } from './ui/separator';
-import { Progress } from './ui/progress';
 import {
   Users, Armchair, Scissors, Banknote, Play,
   CreditCard, Activity, Clock, ChevronRight, AlertTriangle,
-  Check, X, Eye, Zap
+  Check, X, Eye, Zap, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -34,7 +33,6 @@ export default function Dashboard() {
   const revenueToday = transactions.reduce((sum, t) => sum + t.amount, 0) +
     activeSessions.reduce((sum, s) => sum + s.totalBill, 0);
 
-  // Update elapsed times
   useEffect(() => {
     const interval = setInterval(() => {
       const times: Record<string, string> = {};
@@ -106,91 +104,102 @@ export default function Dashboard() {
   };
 
   const selectedSession = sessions.find((s) => s.chairId === selectedChairId);
-
-  const getServiceName = (type: string) => {
-    return services.find((s) => s.type === type)?.name || type;
-  };
+  const getServiceName = (type: string) => services.find((s) => s.type === type)?.name || type;
 
   const paymentMethods = [
-    { id: 'telebirr', name: 'Telebirr', color: 'from-green-500 to-green-600' },
-    { id: 'cbe_birr', name: 'CBE Birr', color: 'from-blue-500 to-blue-600' },
-    { id: 'bank_transfer', name: 'Bank Transfer', color: 'from-purple-500 to-purple-600' },
-    { id: 'cash', name: 'Cash', color: 'from-amber-500 to-amber-600' },
-    { id: 'card', name: 'Card', color: 'from-rose-500 to-rose-600' },
+    { id: 'telebirr', name: 'Telebirr', color: 'gradient-success', icon: '📱' },
+    { id: 'cbe_birr', name: 'CBE Birr', color: 'gradient-info', icon: '🏦' },
+    { id: 'bank_transfer', name: 'Bank Transfer', color: 'gradient-primary', icon: '💳' },
+    { id: 'cash', name: 'Cash', color: 'gradient-warning', icon: '💵' },
+    { id: 'card', name: 'Card', color: 'gradient-pink', icon: '💳' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Live Shop Overview</h2>
-          <p className="text-muted-foreground">Real-time AI-powered service detection & billing</p>
+          <h1 className="text-2xl font-bold text-foreground">Good morning, Abel 👋</h1>
+          <p className="text-sm text-muted-foreground mt-1">Here's what's happening at your shop today.</p>
         </div>
-        <Button onClick={handleStartDemo} disabled={demoRunning} size="lg" className="gap-2">
+        <Button onClick={handleStartDemo} disabled={demoRunning} className="gap-2 shadow-soft">
           <Play className="h-4 w-4" />
           {demoRunning ? 'Demo Running...' : 'Start AI Demo'}
         </Button>
       </div>
 
-      {/* Overview Cards */}
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeSessions.length}</div>
+        <Card className="shadow-card hover:shadow-elevated transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> +12%
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{activeSessions.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Active Customers</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Chairs</CardTitle>
-            <Armchair className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{availableChairs}</div>
+
+        <Card className="shadow-card hover:shadow-elevated transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-xl gradient-success flex items-center justify-center">
+                <Armchair className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">of 4 total</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{availableChairs}</p>
+            <p className="text-xs text-muted-foreground mt-1">Available Chairs</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Services Today</CardTitle>
-            <Scissors className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalServicesToday}</div>
+
+        <Card className="shadow-card hover:shadow-elevated transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-xl gradient-warning flex items-center justify-center">
+                <Scissors className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> +8%
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{totalServicesToday}</p>
+            <p className="text-xs text-muted-foreground mt-1">Services Today</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue Today</CardTitle>
-            <Banknote className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{revenueToday.toLocaleString()} ETB</div>
+
+        <Card className="shadow-card hover:shadow-elevated transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-10 w-10 rounded-xl gradient-info flex items-center justify-center">
+                <Banknote className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> +23%
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{revenueToday.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-1">Revenue (ETB)</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* System Status */}
-      <Card>
-        <CardContent className="grid gap-4 pt-6 md:grid-cols-4">
-          <StatusIndicator label="AI Vision System" status={systemStatus.aiVision} />
-          <StatusIndicator label={`${systemStatus.camerasConnected}/${systemStatus.cameras} Cameras`} status={systemStatus.camerasConnected === systemStatus.cameras ? 'online' : 'offline'} />
-          <StatusIndicator label="AI Detection" status={systemStatus.detection === 'running' ? 'online' : 'offline'} />
-          <StatusIndicator label="Payment System" status={systemStatus.payment === 'ready' ? 'online' : 'offline'} />
-        </CardContent>
-      </Card>
-
-      {/* Main Grid: Cameras + Activity */}
+      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Camera Grid */}
+        {/* Camera Feeds */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Live Camera Feeds
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-foreground">Live Camera Feeds</h3>
+            <Badge variant="secondary" className="gap-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              AI Active
+            </Badge>
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             {['1', '2', '3', '4'].map((chairId) => {
               const session = sessions.find((s) => s.chairId === chairId && s.status === 'active');
@@ -216,20 +225,22 @@ export default function Dashboard() {
 
         {/* Activity Timeline */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            AI Activity Timeline
-          </h3>
-          <Card className="h-[500px] overflow-hidden flex flex-col">
-            <CardContent className="flex-1 overflow-y-auto pt-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-foreground">AI Activity</h3>
+            <button className="text-xs text-primary font-medium hover:underline">View all</button>
+          </div>
+          <Card className="h-[460px] overflow-hidden flex flex-col shadow-card">
+            <CardContent className="flex-1 overflow-y-auto p-4">
               {activityLog.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Eye className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">No activity yet</p>
+                  <div className="h-16 w-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
+                    <Eye className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-medium">No activity yet</p>
                   <p className="text-xs mt-1">Start AI Demo to see live events</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {activityLog.map((event) => (
                     <ActivityItem key={event.id} event={event} />
                   ))}
@@ -244,51 +255,48 @@ export default function Dashboard() {
       <Dialog open={showBilling} onOpenChange={setShowBilling}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{selectedSession?.customerName}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedSession?.customerName}
+              <Badge variant="secondary">Chair {selectedSession?.chairId}</Badge>
+            </DialogTitle>
             <DialogDescription>
-              Chair {selectedSession?.chairId} • Barber: {selectedSession?.barberName}
+              Barber: {selectedSession?.barberName}
             </DialogDescription>
           </DialogHeader>
 
           {selectedSession && (
             <div className="space-y-4">
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Detected Services</h4>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detected Services</p>
                 {selectedSession.detectedServices.map((ds) => (
-                  <div key={ds.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div key={ds.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
                     <div className="flex items-center gap-3">
-                      {ds.status === 'rejected' ? (
-                        <X className="h-4 w-4 text-destructive" />
-                      ) : ds.status === 'confirmed' ? (
-                        <Check className="h-4 w-4 text-primary" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      )}
+                      <div className={cn(
+                        "h-8 w-8 rounded-lg flex items-center justify-center",
+                        ds.status === 'rejected' ? "bg-destructive/10" :
+                        ds.status === 'confirmed' ? "bg-success/10" : "bg-warning/10"
+                      )}>
+                        {ds.status === 'rejected' ? (
+                          <X className="h-4 w-4 text-destructive" />
+                        ) : ds.status === 'confirmed' ? (
+                          <Check className="h-4 w-4 text-success" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 text-warning" />
+                        )}
+                      </div>
                       <div>
-                        <p className="font-medium text-sm">{getServiceName(ds.type)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          AI: {ds.confidence}% • {ds.status}
-                        </p>
+                        <p className="font-medium text-sm text-foreground">{getServiceName(ds.type)}</p>
+                        <p className="text-xs text-muted-foreground">AI: {ds.confidence}% • {ds.status}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-semibold">{ds.price} ETB</span>
+                      <span className="font-semibold text-sm">{ds.price} ETB</span>
                       {ds.status === 'detected' && ds.confidence < 80 && (
                         <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => updateServiceStatus(selectedSession.chairId, ds.id, 'confirmed')}
-                            className="h-7 w-7"
-                          >
+                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateServiceStatus(selectedSession.chairId, ds.id, 'confirmed')}>
                             <Check className="h-3 w-3" />
                           </Button>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => updateServiceStatus(selectedSession.chairId, ds.id, 'rejected')}
-                            className="h-7 w-7"
-                          >
+                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateServiceStatus(selectedSession.chairId, ds.id, 'rejected')}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -303,26 +311,22 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{selectedSession.totalBill} ETB</span>
+                  <span className="font-medium">{selectedSession.totalBill} ETB</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
                   <span>0 ETB</span>
                 </div>
                 <Separator />
-                <div className="flex justify-between text-lg font-bold pt-2">
-                  <span>TOTAL</span>
+                <div className="flex justify-between text-lg font-bold pt-1">
+                  <span>Total</span>
                   <span className="text-primary">{selectedSession.totalBill} ETB</span>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button onClick={handleConfirmBill} className="flex-1">
-                  Confirm & Pay
-                </Button>
-                <Button variant="outline" onClick={() => setShowBilling(false)}>
-                  Edit
-                </Button>
+              <div className="flex gap-3 pt-2">
+                <Button onClick={handleConfirmBill} className="flex-1 shadow-soft">Confirm & Pay</Button>
+                <Button variant="outline" onClick={() => setShowBilling(false)}>Edit</Button>
               </div>
             </div>
           )}
@@ -334,37 +338,34 @@ export default function Dashboard() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center">{selectedSession?.customerName}</DialogTitle>
-            <DialogDescription className="text-center">Amount Due</DialogDescription>
+            <DialogDescription className="text-center">Select payment method</DialogDescription>
           </DialogHeader>
 
           <div className="text-center mb-6">
-            <p className="text-4xl font-bold text-primary">{selectedSession?.totalBill} ETB</p>
+            <p className="text-4xl font-bold text-foreground">{selectedSession?.totalBill}</p>
+            <p className="text-sm text-muted-foreground">ETB</p>
           </div>
 
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Select Payment Method</p>
+          <div className="space-y-2">
             {paymentMethods.map((method) => (
-              <Button
+              <button
                 key={method.id}
-                variant="outline"
-                className="w-full justify-between h-auto py-4"
                 onClick={() => {
                   setSelectedPaymentMethod(method.id);
                   handlePayment(method.id);
                 }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${method.color} flex items-center justify-center`}>
-                    <CreditCard className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="font-medium">{method.name}</span>
+                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-lg", method.color)}>
+                  {method.icon}
                 </div>
+                <span className="font-medium text-sm flex-1">{method.name}</span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Button>
+              </button>
             ))}
           </div>
 
-          <Button variant="outline" className="w-full" onClick={() => { setShowPayment(false); setSelectedPaymentMethod(''); }}>
+          <Button variant="outline" className="w-full mt-4" onClick={() => { setShowPayment(false); setSelectedPaymentMethod(''); }}>
             Cancel
           </Button>
         </DialogContent>
@@ -374,41 +375,21 @@ export default function Dashboard() {
       <Dialog open={paymentSuccess} onOpenChange={setPaymentSuccess}>
         <DialogContent className="max-w-md">
           <div className="text-center py-6">
-            <div className="mx-auto w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-              <Check className="h-10 w-10 text-primary" />
+            <div className="mx-auto h-16 w-16 rounded-2xl gradient-success flex items-center justify-center mb-4">
+              <Check className="h-8 w-8 text-white" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Payment Successful</h3>
-            <p className="text-3xl font-bold text-primary mb-2">{lastTransaction?.amount} ETB</p>
-            <p className="text-sm text-muted-foreground">
-              Transaction #{lastTransaction?.transactionId}
-            </p>
+            <h3 className="text-xl font-bold mb-1">Payment Successful</h3>
+            <p className="text-3xl font-bold text-primary mb-1">{lastTransaction?.amount} ETB</p>
+            <p className="text-sm text-muted-foreground">Transaction #{lastTransaction?.transactionId}</p>
 
-            <div className="mt-8 space-y-3">
-              <Button className="w-full">Print Receipt</Button>
+            <div className="mt-8 space-y-2">
+              <Button className="w-full shadow-soft">Print Receipt</Button>
               <Button variant="outline" className="w-full">Send Receipt</Button>
-              <Button variant="outline" className="w-full" onClick={handleNewCustomer}>
-                New Customer
-              </Button>
+              <Button variant="ghost" className="w-full" onClick={handleNewCustomer}>New Customer</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// Status Indicator Component
-function StatusIndicator({ label, status }: { label: string; status: string }) {
-  const isOnline = status === 'online';
-  return (
-    <div className="flex items-center gap-2">
-      <div className={cn("h-2.5 w-2.5 rounded-full", isOnline ? "bg-primary animate-pulse" : "bg-destructive")} />
-      <div>
-        <p className="text-xs font-medium">{label}</p>
-        <p className={cn("text-[10px]", isOnline ? "text-primary" : "text-destructive")}>
-          {isOnline ? 'Online' : 'Offline'}
-        </p>
-      </div>
     </div>
   );
 }
@@ -427,80 +408,77 @@ function ChairCard({ chairId, session, elapsed, isSelected, onSelect, getService
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-md",
+        "cursor-pointer transition-all hover:shadow-elevated overflow-hidden",
         isSelected && "ring-2 ring-primary"
       )}
       onClick={onSelect}
     >
       {/* Camera Preview */}
-      <div className="relative h-40 bg-muted overflow-hidden">
+      <div className="relative h-32 bg-gradient-to-br from-muted to-muted/50 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           {session ? (
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-full bg-background flex items-center justify-center mb-2">
-                <Users className="h-8 w-8 text-muted-foreground" />
+              <div className="h-14 w-14 mx-auto rounded-full bg-card/80 flex items-center justify-center mb-2 shadow-soft">
+                <Users className="h-7 w-7 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">AI Monitoring Active</p>
+              <p className="text-[10px] text-muted-foreground font-medium">AI Monitoring</p>
             </div>
           ) : (
             <div className="text-center">
-              <Armchair className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Chair Empty</p>
+              <Armchair className="h-10 w-10 text-muted-foreground/40 mx-auto mb-1" />
+              <p className="text-[10px] text-muted-foreground/60">Empty</p>
             </div>
           )}
         </div>
 
-        {/* Scan line animation */}
+        {/* Scan line */}
         {session && (
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute w-full h-0.5 bg-primary/30 animate-scan" />
           </div>
         )}
 
-        {/* AI LIVE indicator */}
+        {/* Status badges */}
         {session && (
-          <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-destructive rounded-md">
-            <div className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
-            <span className="text-[10px] font-bold text-white">AI LIVE</span>
+          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-destructive rounded-md">
+              <div className="h-1 w-1 bg-white rounded-full animate-pulse" />
+              <span className="text-[8px] font-bold text-white">LIVE</span>
+            </div>
           </div>
         )}
 
-        {/* Chair number */}
-        <Badge variant="secondary" className="absolute top-2 right-2">
+        <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">
           Chair {chairId}
         </Badge>
       </div>
 
-      {/* Info Panel */}
-      <CardContent className="p-4">
+      {/* Info */}
+      <CardContent className="p-3">
         {session ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-semibold">{session.customerName}</span>
-              <Badge variant="default">Active</Badge>
+              <span className="font-semibold text-sm">{session.customerName}</span>
+              <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">Active</Badge>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Barber: {session.barberName}</span>
-              <span className="flex items-center gap-1">
+              <span>{session.barberName}</span>
+              <span className="flex items-center gap-1 font-mono">
                 <Clock className="h-3 w-3" />
                 {elapsed}
               </span>
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{currentService ? getServiceName(currentService.type) : 'Waiting...'}</span>
-              <span className="text-primary font-semibold">
-                {currentService ? `${currentService.confidence}%` : '—'}
-              </span>
-            </div>
-            <Separator className="my-2" />
+            <Separator className="my-1" />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Current Bill</span>
-              <span className="text-sm font-bold text-primary">{session.totalBill} ETB</span>
+              <span className="text-xs text-muted-foreground">
+                {currentService ? getServiceName(currentService.type) : 'Waiting...'}
+              </span>
+              <span className="text-xs font-bold text-primary">{session.totalBill} ETB</span>
             </div>
           </div>
         ) : (
-          <div className="text-center py-2">
-            <p className="text-sm text-muted-foreground">Available</p>
+          <div className="text-center py-1">
+            <p className="text-xs text-muted-foreground">Available</p>
           </div>
         )}
       </CardContent>
@@ -511,28 +489,24 @@ function ChairCard({ chairId, session, elapsed, isSelected, onSelect, getService
 // Activity Item Component
 function ActivityItem({ event }: { event: any }) {
   const typeColors: Record<string, string> = {
-    customer_enter: 'text-blue-500',
-    service_start: 'text-primary',
-    service_detect: 'text-cyan-500',
-    service_complete: 'text-purple-500',
-    bill_generated: 'text-amber-500',
-    payment: 'text-primary',
-    customer_leave: 'text-muted-foreground',
+    customer_enter: 'bg-info',
+    service_start: 'bg-primary',
+    service_detect: 'bg-purple',
+    service_complete: 'bg-success',
+    bill_generated: 'bg-warning',
+    payment: 'bg-success',
+    customer_leave: 'bg-muted-foreground',
   };
 
   const time = new Date(event.timestamp).toLocaleTimeString('en-US', { hour12: false });
 
   return (
-    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-      <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap mt-0.5">
-        {time}
-      </span>
-      <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5", typeColors[event.type]?.replace('text-', 'bg-') || 'bg-muted-foreground')} />
+    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+      <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap mt-0.5">{time}</span>
+      <div className={cn("h-2 w-2 rounded-full mt-1 flex-shrink-0", typeColors[event.type] || 'bg-muted-foreground')} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">
-          <span className="text-foreground">Chair {event.chairId}</span>
-          {' — '}
-          <span className={typeColors[event.type]}>{event.message}</span>
+        <p className="text-xs font-medium truncate text-foreground">
+          Chair {event.chairId} — {event.message}
         </p>
         <p className="text-[10px] text-muted-foreground">{event.confidence}% confidence</p>
       </div>

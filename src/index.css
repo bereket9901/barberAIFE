@@ -2,26 +2,33 @@
 
 @layer base {
   :root {
-    --background: 0 0% 99%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 97%;
+    --foreground: 224 71% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 152 69% 31%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 237 92% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 71% 4%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 152 69% 31%;
-    --radius: 0.625rem;
+    --ring: 237 92% 62%;
+    --radius: 0.75rem;
+
+    /* Custom palette */
+    --success: 152 69% 41%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
+    --purple: 262 83% 58%;
+    --pink: 330 81% 60%;
   }
 }
 
@@ -35,7 +42,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv11", "ss01";
-    font-variation-settings: "opsz" 32;
   }
 }
 
@@ -59,63 +65,51 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-info: hsl(var(--info));
+  --color-purple: hsl(var(--purple));
+  --color-pink: hsl(var(--pink));
 }
 
 @layer utilities {
   .animate-scan {
-    animation: scan 3s linear infinite;
+    animation: scan 3s ease-in-out infinite;
+  }
+  .shadow-soft {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  }
+  .shadow-card {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.03);
+  }
+  .shadow-elevated {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(237 92% 62%), hsl(262 83% 58%));
+  }
+  .gradient-success {
+    background: linear-gradient(135deg, hsl(152 69% 41%), hsl(170 69% 41%));
+  }
+  .gradient-warning {
+    background: linear-gradient(135deg, hsl(38 92% 50%), hsl(25 95% 53%));
+  }
+  .gradient-info {
+    background: linear-gradient(135deg, hsl(199 89% 48%), hsl(217 91% 60%));
+  }
+  .gradient-pink {
+    background: linear-gradient(135deg, hsl(330 81% 60%), hsl(262 83% 58%));
   }
 }
 
 @keyframes scan {
-  0% {
-    top: 0%;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.2);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
-}
-
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Card hover effects */
-.card-hover {
-  transition: all 0.2s ease;
-}
-
-.card-hover:hover {
-  box-shadow: 0 4px 6px -1px hsl(var(--muted-foreground) / 0.1), 0 2px 4px -2px hsl(var(--muted-foreground) / 0.1);
-  transform: translateY(-1px);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.3); }

@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
-import { Search, Filter, Receipt, CreditCard, Banknote } from 'lucide-react';
+import { Search, Filter, Receipt, CreditCard, Banknote, TrendingUp } from 'lucide-react';
 
 export default function TransactionsPage() {
   const { transactions } = useStore();
@@ -24,52 +24,90 @@ export default function TransactionsPage() {
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
-      telebirr: 'Telebirr',
-      cbe_birr: 'CBE Birr',
-      bank_transfer: 'Bank Transfer',
-      cash: 'Cash',
-      card: 'Card',
+      telebirr: 'Telebirr', cbe_birr: 'CBE Birr', bank_transfer: 'Bank Transfer', cash: 'Cash', card: 'Card',
     };
     return labels[method] || method;
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    if (method === 'cash') return <Banknote className="h-4 w-4" />;
-    return <CreditCard className="h-4 w-4" />;
+  const getPaymentMethodColor = (method: string) => {
+    const colors: Record<string, string> = {
+      telebirr: 'bg-success/10 text-success border-success/20',
+      cbe_birr: 'bg-info/10 text-info border-info/20',
+      bank_transfer: 'bg-primary/10 text-primary border-primary/20',
+      cash: 'bg-warning/10 text-warning border-warning/20',
+      card: 'bg-pink/10 text-pink border-pink/20',
+    };
+    return colors[method] || 'bg-muted text-muted-foreground';
   };
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
     });
   };
 
+  const totalRevenue = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const avgTransaction = filteredTransactions.length > 0 ? Math.round(totalRevenue / filteredTransactions.length) : 0;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Transaction History</h2>
-        <p className="text-muted-foreground">All completed transactions and payment records</p>
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="shadow-card">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
+                <Receipt className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{filteredTransactions.length}</p>
+                <p className="text-xs text-muted-foreground">Total Transactions</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl gradient-success flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalRevenue.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total Revenue (ETB)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl gradient-info flex items-center justify-center">
+                <Banknote className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{avgTransaction}</p>
+                <p className="text-xs text-muted-foreground">Avg. Transaction (ETB)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by customer, barber, or transaction ID..."
-            className="pl-10"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+      <Card className="shadow-card">
+        <CardContent className="p-4 flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search transactions..."
+              className="pl-10"
+            />
+          </div>
           <Select value={filterMethod} onValueChange={setFilterMethod}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -81,99 +119,75 @@ export default function TransactionsPage() {
               <SelectItem value="card">Card</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Transactions</p>
-            <p className="text-2xl font-bold">{filteredTransactions.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
-            <p className="text-2xl font-bold text-primary">
-              {filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0).toLocaleString()} ETB
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Avg. Transaction</p>
-            <p className="text-2xl font-bold">
-              {filteredTransactions.length > 0
-                ? Math.round(filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0) / filteredTransactions.length)
-                : 0} ETB
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Transactions Table */}
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
+      <Card className="shadow-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-accent/30">
+              <TableHead>Transaction ID</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Barber</TableHead>
+              <TableHead>Services</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Payment</TableHead>
+              <TableHead>Date/Time</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredTransactions.length === 0 ? (
               <TableRow>
-                <TableHead>Transaction ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Barber</TableHead>
-                <TableHead>Services</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Date/Time</TableHead>
-                <TableHead>Status</TableHead>
+                <TableCell colSpan={8} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Receipt className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">No transactions found</p>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTransactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">No transactions found</p>
+            ) : (
+              filteredTransactions.map((tx) => (
+                <TableRow key={tx.id}>
+                  <TableCell>
+                    <code className="text-xs font-mono px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">
+                      {tx.transactionId}
+                    </code>
+                  </TableCell>
+                  <TableCell className="font-medium">{tx.customerName}</TableCell>
+                  <TableCell className="text-muted-foreground">{tx.barberName}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {tx.services.map((svc, i) => (
+                        <Badge key={i} variant="secondary" className="text-[10px]">
+                          {svc}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-bold text-foreground">{tx.amount} ETB</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={cn("text-[10px]", getPaymentMethodColor(tx.paymentMethod))}>
+                      {getPaymentMethodLabel(tx.paymentMethod)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{formatTime(tx.timestamp)}</TableCell>
+                  <TableCell>
+                    <Badge className={cn(
+                      "text-[10px]",
+                      tx.status === 'paid' ? "bg-success/10 text-success border-success/20" :
+                      tx.status === 'pending' ? "bg-warning/10 text-warning border-warning/20" :
+                      "bg-destructive/10 text-destructive border-destructive/20"
+                    )}>
+                      {tx.status === 'paid' ? '✓ Paid' : tx.status}
+                    </Badge>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>
-                      <code className="text-xs font-mono px-2 py-1 rounded bg-muted text-primary">
-                        {tx.transactionId}
-                      </code>
-                    </TableCell>
-                    <TableCell className="font-medium">{tx.customerName}</TableCell>
-                    <TableCell>{tx.barberName}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {tx.services.map((svc, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {svc}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold text-primary">{tx.amount} ETB</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getPaymentMethodIcon(tx.paymentMethod)}
-                        <span>{getPaymentMethodLabel(tx.paymentMethod)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatTime(tx.timestamp)}</TableCell>
-                    <TableCell>
-                      <Badge variant={tx.status === 'paid' ? 'default' : tx.status === 'pending' ? 'secondary' : 'destructive'}>
-                        {tx.status === 'paid' ? '✓ Paid' : tx.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );
