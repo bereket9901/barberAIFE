@@ -13,8 +13,6 @@ import type {
 interface AppState {
   // System
   systemStatus: SystemStatus;
-  darkMode: boolean;
-  toggleDarkMode: () => void;
 
   // Cameras
   cameras: Camera[];
@@ -124,8 +122,6 @@ export const useStore = create<AppState>((set, get) => ({
     detection: 'running',
     payment: 'ready',
   },
-  darkMode: true,
-  toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
 
   // Cameras
   cameras: defaultCameras,

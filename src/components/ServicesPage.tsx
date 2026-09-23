@@ -11,7 +11,7 @@ import { Plus, Edit2, Trash2, X, Check, Scissors } from 'lucide-react';
 import type { ServiceType } from '../types';
 
 export default function ServicesPage() {
-  const { services, addService, updateService, deleteService, darkMode } = useStore();
+  const { services, addService, updateService, deleteService } = useStore();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', type: 'haircut' as ServiceType, price: 0, duration: 30 });

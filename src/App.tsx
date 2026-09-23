@@ -12,7 +12,7 @@ import { Separator } from './components/ui/separator';
 import { Users, Settings } from 'lucide-react';
 
 function CustomersPage() {
-  const { sessions, darkMode } = useStore();
+  const { sessions } = useStore();
   const activeSessions = sessions.filter((s) => s.status === 'active');
   const completedSessions = sessions.filter((s) => s.status === 'paid');
 
@@ -86,7 +86,7 @@ function CustomersPage() {
 }
 
 function SettingsPage() {
-  const { systemStatus, darkMode, cameras } = useStore();
+  const { systemStatus, cameras } = useStore();
 
   return (
     <div className="space-y-6">
@@ -190,7 +190,6 @@ function SettingsPage() {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const { darkMode } = useStore();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -212,10 +211,8 @@ export default function App() {
   };
 
   return (
-    <div className={cn(darkMode && "dark")}>
-      <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-        {renderPage()}
-      </Layout>
-    </div>
+    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+      {renderPage()}
+    </Layout>
   );
 }

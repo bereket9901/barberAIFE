@@ -4,7 +4,7 @@ import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
-  Moon, Sun, Zap
+  Zap
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -23,10 +23,10 @@ const navItems = [
 ];
 
 export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { systemStatus, darkMode, toggleDarkMode } = useStore();
+  const { systemStatus } = useStore();
 
   return (
-    <div className={cn("min-h-screen", darkMode && "dark")}>
+    <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4">
@@ -67,15 +67,6 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                 <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                 AI System Online
               </div>
-
-              {/* Dark mode toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleDarkMode}
-              >
-                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
             </div>
           </div>
 

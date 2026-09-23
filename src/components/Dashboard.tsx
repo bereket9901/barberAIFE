@@ -16,7 +16,7 @@ import {
 
 export default function Dashboard() {
   const {
-    sessions, transactions, services, systemStatus, darkMode,
+    sessions, transactions, services, systemStatus,
     selectedChairId, selectChair, showBilling, setShowBilling,
     showPayment, setShowPayment, updateServiceStatus,
     addActivity, demoRunning, setDemoRunning,

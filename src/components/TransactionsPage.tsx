@@ -9,7 +9,7 @@ import { Badge } from './ui/badge';
 import { Search, Filter, Receipt, CreditCard, Banknote } from 'lucide-react';
 
 export default function TransactionsPage() {
-  const { transactions, darkMode } = useStore();
+  const { transactions } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState('all');
 

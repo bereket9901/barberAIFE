@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Camera, Wifi, WifiOff, Maximize2, Users, Clock, Eye } from 'lucide-react';
 
 export default function LiveCamerasPage() {
-  const { cameras, sessions, darkMode } = useStore();
+  const { cameras, sessions } = useStore();
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
   const [elapsedTimes, setElapsedTimes] = useState<Record<string, string>>({});
 
