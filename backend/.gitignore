@@ -5,4 +5,3 @@ data/*.db-shm
 .env
 .env.local
 *.log
-.DS_Store

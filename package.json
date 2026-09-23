@@ -1,11 +1,17 @@
 {
-  "name": "sandbox-workspace",
+  "name": "barberai",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:frontend": "vite",
+    "dev:backend": "cd backend && npm run dev",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "cd backend && npm run seed",
+    "install:all": "npm install && cd backend && npm install",
+    "start:backend": "cd backend && npm start"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
