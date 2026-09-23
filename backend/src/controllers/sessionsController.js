@@ -5,23 +5,19 @@ import { v4 as uuidv4 } from 'uuid';
 export const getAllSessions = (req, res) => {
   try {
     const { status } = req.query;
-    let query = 'SELECT * FROM sessions';
-    const params = [];
+    let sessions = db.getAll('sessions');
 
     if (status) {
-      query += ' WHERE status = ?';
-      params.push(status);
+      sessions = sessions.filter(s => s.status === status);
     }
 
-    query += ' ORDER BY start_time DESC';
-
-    const sessions = db.prepare(query).all(...params);
+    // Sort by start_time descending
+    sessions.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
 
     // Attach detected services to each session
     const sessionsWithServices = sessions.map(session => {
-      const detectedServices = db.prepare(
-        'SELECT * FROM detected_services WHERE session_id = ? ORDER BY detected_at'
-      ).all(session.id);
+      const detectedServices = db.query('detected_services', { session_id: session.id })
+        .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
       return { ...session, detectedServices };
     });
 
@@ -34,14 +30,13 @@ export const getAllSessions = (req, res) => {
 // Get session by ID
 export const getSessionById = (req, res) => {
   try {
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+    const session = db.getById('sessions', req.params.id);
     if (!session) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
-    const detectedServices = db.prepare(
-      'SELECT * FROM detected_services WHERE session_id = ? ORDER BY detected_at'
-    ).all(session.id);
+    const detectedServices = db.query('detected_services', { session_id: session.id })
+      .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
 
     res.json({ success: true, data: { ...session, detectedServices } });
   } catch (error) {
@@ -52,14 +47,12 @@ export const getSessionById = (req, res) => {
 // Get sessions by chair
 export const getSessionsByChair = (req, res) => {
   try {
-    const sessions = db.prepare(
-      'SELECT * FROM sessions WHERE chair_id = ? ORDER BY start_time DESC'
-    ).all(req.params.chairId);
+    const sessions = db.query('sessions', { chair_id: req.params.chairId })
+      .sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
 
     const sessionsWithServices = sessions.map(session => {
-      const detectedServices = db.prepare(
-        'SELECT * FROM detected_services WHERE session_id = ? ORDER BY detected_at'
-      ).all(session.id);
+      const detectedServices = db.query('detected_services', { session_id: session.id })
+        .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
       return { ...session, detectedServices };
     });
 
@@ -79,9 +72,7 @@ export const createSession = (req, res) => {
     }
 
     // Check if chair already has an active session
-    const existingSession = db.prepare(
-      'SELECT * FROM sessions WHERE chair_id = ? AND status = ?'
-    ).get(chairId, 'active');
+    const existingSession = db.query('sessions', { chair_id: chairId, status: 'active' })[0];
 
     if (existingSession) {
       return res.status(400).json({ 
@@ -91,14 +82,21 @@ export const createSession = (req, res) => {
       });
     }
 
-    const id = uuidv4();
-    const stmt = db.prepare(`
-      INSERT INTO sessions (id, chair_id, customer_name, customer_id, barber_id, barber_name)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, chairId, customerName, customerId, barberId, barberName);
+    const session = {
+      id: uuidv4(),
+      chair_id: chairId,
+      customer_name: customerName,
+      customer_id: customerId,
+      barber_id: barberId,
+      barber_name: barberName,
+      start_time: new Date().toISOString(),
+      end_time: null,
+      status: 'active',
+      total_bill: 0,
+      created_at: new Date().toISOString()
+    };
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+    db.insert('sessions', session);
     res.status(201).json({ success: true, data: { ...session, detectedServices: [] } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -115,22 +113,28 @@ export const addDetectedService = (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+    const session = db.getById('sessions', sessionId);
     if (!session) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
-    const id = uuidv4();
-    const stmt = db.prepare(`
-      INSERT INTO detected_services (id, session_id, chair_id, type, confidence, price)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, sessionId, session.chair_id, type, confidence, price);
+    const detectedService = {
+      id: uuidv4(),
+      session_id: sessionId,
+      chair_id: session.chair_id,
+      type,
+      confidence: Number(confidence),
+      status: 'detected',
+      price: Number(price),
+      detected_at: new Date().toISOString(),
+      completed_at: null
+    };
+
+    db.insert('detected_services', detectedService);
 
     // Recalculate total bill
     recalculateTotalBill(sessionId);
 
-    const detectedService = db.prepare('SELECT * FROM detected_services WHERE id = ?').get(id);
     res.status(201).json({ success: true, data: detectedService });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -147,23 +151,21 @@ export const updateDetectedServiceStatus = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
-    const service = db.prepare('SELECT * FROM detected_services WHERE id = ?').get(serviceId);
+    const service = db.getById('detected_services', serviceId);
     if (!service) {
       return res.status(404).json({ success: false, error: 'Detected service not found' });
     }
 
-    const completedAt = status === 'confirmed' || status === 'charged' ? new Date().toISOString() : null;
+    const updates = { status };
+    if (status === 'confirmed' || status === 'charged') {
+      updates.completed_at = new Date().toISOString();
+    }
 
-    db.prepare(`
-      UPDATE detected_services 
-      SET status = ?, completed_at = COALESCE(?, completed_at)
-      WHERE id = ?
-    `).run(status, completedAt, serviceId);
+    const updatedService = db.update('detected_services', serviceId, updates);
 
     // Recalculate total bill
     recalculateTotalBill(service.session_id);
 
-    const updatedService = db.prepare('SELECT * FROM detected_services WHERE id = ?').get(serviceId);
     res.json({ success: true, data: updatedService });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -173,21 +175,18 @@ export const updateDetectedServiceStatus = (req, res) => {
 // Complete session
 export const completeSession = (req, res) => {
   try {
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+    const session = db.getById('sessions', req.params.id);
     if (!session) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
-    db.prepare(`
-      UPDATE sessions 
-      SET status = 'completed', end_time = datetime('now')
-      WHERE id = ?
-    `).run(req.params.id);
+    const updatedSession = db.update('sessions', req.params.id, {
+      status: 'completed',
+      end_time: new Date().toISOString()
+    });
 
-    const updatedSession = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
-    const detectedServices = db.prepare(
-      'SELECT * FROM detected_services WHERE session_id = ? ORDER BY detected_at'
-    ).all(updatedSession.id);
+    const detectedServices = db.query('detected_services', { session_id: updatedSession.id })
+      .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
 
     res.json({ success: true, data: { ...updatedSession, detectedServices } });
   } catch (error) {
@@ -197,12 +196,10 @@ export const completeSession = (req, res) => {
 
 // Helper function to recalculate total bill
 const recalculateTotalBill = (sessionId) => {
-  const result = db.prepare(`
-    SELECT COALESCE(SUM(price), 0) as total
-    FROM detected_services
-    WHERE session_id = ? AND status != 'rejected'
-  `).get(sessionId);
+  const services = db.query('detected_services', { session_id: sessionId });
+  const total = services
+    .filter(s => s.status !== 'rejected')
+    .reduce((sum, s) => sum + s.price, 0);
 
-  db.prepare('UPDATE sessions SET total_bill = ? WHERE id = ?')
-    .run(result.total, sessionId);
+  db.update('sessions', sessionId, { total_bill: total });
 };

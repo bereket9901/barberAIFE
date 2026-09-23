@@ -5,34 +5,28 @@ import { v4 as uuidv4 } from 'uuid';
 export const getAllTransactions = (req, res) => {
   try {
     const { paymentMethod, status, limit = 50, offset = 0 } = req.query;
-    let query = 'SELECT * FROM transactions';
-    const conditions = [];
-    const params = [];
+    let transactions = db.getAll('transactions');
 
+    // Apply filters
     if (paymentMethod) {
-      conditions.push('payment_method = ?');
-      params.push(paymentMethod);
+      transactions = transactions.filter(t => t.payment_method === paymentMethod);
     }
-
     if (status) {
-      conditions.push('status = ?');
-      params.push(status);
+      transactions = transactions.filter(t => t.status === status);
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    // Sort by timestamp descending
+    transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
-
-    const transactions = db.prepare(query).all(...params);
+    // Apply pagination
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
+    transactions = transactions.slice(offsetNum, offsetNum + limitNum);
 
     // Attach services to each transaction
     const transactionsWithServices = transactions.map(tx => {
-      const services = db.prepare(
-        'SELECT service_name FROM transaction_services WHERE transaction_id = ?'
-      ).all(tx.id).map(row => row.service_name);
+      const services = db.query('transaction_services', { transaction_id: tx.id })
+        .map(row => row.service_name);
       return { ...tx, services };
     });
 
@@ -45,14 +39,13 @@ export const getAllTransactions = (req, res) => {
 // Get transaction by ID
 export const getTransactionById = (req, res) => {
   try {
-    const transaction = db.prepare('SELECT * FROM transactions WHERE id = ?').get(req.params.id);
+    const transaction = db.getById('transactions', req.params.id);
     if (!transaction) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const services = db.prepare(
-      'SELECT service_name FROM transaction_services WHERE transaction_id = ?'
-    ).all(transaction.id).map(row => row.service_name);
+    const services = db.query('transaction_services', { transaction_id: transaction.id })
+      .map(row => row.service_name);
 
     res.json({ success: true, data: { ...transaction, services } });
   } catch (error) {
@@ -63,14 +56,15 @@ export const getTransactionById = (req, res) => {
 // Get transaction by transaction ID (TX-XXXX format)
 export const getTransactionByTxId = (req, res) => {
   try {
-    const transaction = db.prepare('SELECT * FROM transactions WHERE transaction_id = ?').get(req.params.txId);
+    const transactions = db.getAll('transactions');
+    const transaction = transactions.find(t => t.transaction_id === req.params.txId);
+    
     if (!transaction) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const services = db.prepare(
-      'SELECT service_name FROM transaction_services WHERE transaction_id = ?'
-    ).all(transaction.id).map(row => row.service_name);
+    const services = db.query('transaction_services', { transaction_id: transaction.id })
+      .map(row => row.service_name);
 
     res.json({ success: true, data: { ...transaction, services } });
   } catch (error) {
@@ -92,7 +86,7 @@ export const createTransaction = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid payment method' });
     }
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+    const session = db.getById('sessions', sessionId);
     if (!session) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
@@ -102,60 +96,59 @@ export const createTransaction = (req, res) => {
     }
 
     // Get charged services
-    const detectedServices = db.prepare(`
-      SELECT ds.*, s.name as service_name
-      FROM detected_services ds
-      LEFT JOIN services s ON ds.type = s.type
-      WHERE ds.session_id = ? AND ds.status != 'rejected'
-    `).all(sessionId);
+    const detectedServices = db.query('detected_services', { session_id: sessionId })
+      .filter(ds => ds.status !== 'rejected');
 
     if (detectedServices.length === 0) {
       return res.status(400).json({ success: false, error: 'No services to charge' });
     }
 
+    // Get service names
+    const allServices = db.getAll('services');
+    const serviceNames = detectedServices.map(ds => {
+      const service = allServices.find(s => s.type === ds.type);
+      return service ? service.name : ds.type;
+    });
+
     // Create transaction
     const txId = uuidv4();
     const transactionId = `TX-${session.customer_id}`;
 
-    const insertTx = db.prepare(`
-      INSERT INTO transactions (id, transaction_id, session_id, customer_id, customer_name, barber_name, amount, payment_method)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    insertTx.run(
-      txId,
-      transactionId,
-      sessionId,
-      session.customer_id,
-      session.customer_name,
-      session.barber_name,
-      session.total_bill,
-      paymentMethod
-    );
+    const transaction = {
+      id: txId,
+      transaction_id: transactionId,
+      session_id: sessionId,
+      customer_id: session.customer_id,
+      customer_name: session.customer_name,
+      barber_name: session.barber_name,
+      amount: session.total_bill,
+      payment_method: paymentMethod,
+      status: 'paid',
+      timestamp: new Date().toISOString()
+    };
+
+    db.insert('transactions', transaction);
 
     // Insert transaction services
-    const insertTxService = db.prepare(
-      'INSERT INTO transaction_services (transaction_id, service_name) VALUES (?, ?)'
-    );
-    detectedServices.forEach(ds => {
-      insertTxService.run(txId, ds.service_name || ds.type);
+    serviceNames.forEach(serviceName => {
+      db.insert('transaction_services', {
+        transaction_id: txId,
+        service_name: serviceName
+      });
     });
 
     // Mark services as charged
-    db.prepare(`
-      UPDATE detected_services SET status = 'charged'
-      WHERE session_id = ? AND status != 'rejected'
-    `).run(sessionId);
+    detectedServices.forEach(ds => {
+      db.update('detected_services', ds.id, { status: 'charged' });
+    });
 
     // Mark session as paid
-    db.prepare(`
-      UPDATE sessions SET status = 'paid', end_time = datetime('now')
-      WHERE id = ?
-    `).run(sessionId);
+    db.update('sessions', sessionId, {
+      status: 'paid',
+      end_time: new Date().toISOString()
+    });
 
-    const transaction = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId);
-    const services = detectedServices.map(ds => ds.service_name || ds.type);
-
-    res.status(201).json({ success: true, data: { ...transaction, services } });
+    res.status(201).json({ success: true, data: { ...transaction, services: serviceNames } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -166,46 +159,57 @@ export const getTransactionStats = (req, res) => {
   try {
     const { period = 'today' } = req.query;
     
-    let dateFilter = '';
+    const now = new Date();
+    let startDate;
+    
     switch (period) {
       case 'today':
-        dateFilter = "date(timestamp) = date('now')";
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         break;
       case 'week':
-        dateFilter = "timestamp >= datetime('now', '-7 days')";
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
       case 'month':
-        dateFilter = "timestamp >= datetime('now', '-30 days')";
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
       default:
-        dateFilter = "1=1";
+        startDate = new Date(0);
     }
 
-    const stats = db.prepare(`
-      SELECT 
-        COUNT(*) as total_transactions,
-        COALESCE(SUM(amount), 0) as total_revenue,
-        COALESCE(AVG(amount), 0) as avg_transaction,
-        COUNT(DISTINCT customer_id) as unique_customers
-      FROM transactions
-      WHERE status = 'paid' AND ${dateFilter}
-    `).get();
+    const transactions = db.getAll('transactions')
+      .filter(t => t.status === 'paid' && new Date(t.timestamp) >= startDate);
 
-    const byMethod = db.prepare(`
-      SELECT 
-        payment_method,
-        COUNT(*) as count,
-        SUM(amount) as total
-      FROM transactions
-      WHERE status = 'paid' AND ${dateFilter}
-      GROUP BY payment_method
-    `).all();
+    const totalTransactions = transactions.length;
+    const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const avgTransaction = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
+    const uniqueCustomers = new Set(transactions.map(t => t.customer_id)).size;
+
+    // Group by payment method
+    const byMethod = {};
+    transactions.forEach(t => {
+      if (!byMethod[t.payment_method]) {
+        byMethod[t.payment_method] = { count: 0, total: 0 };
+      }
+      byMethod[t.payment_method].count++;
+      byMethod[t.payment_method].total += t.amount;
+    });
+
+    const byPaymentMethod = Object.entries(byMethod).map(([method, data]) => ({
+      payment_method: method,
+      count: data.count,
+      total: data.total
+    }));
 
     res.json({ 
       success: true, 
       data: { 
-        summary: stats,
-        byPaymentMethod: byMethod
+        summary: {
+          total_transactions: totalTransactions,
+          total_revenue: totalRevenue,
+          avg_transaction: avgTransaction,
+          unique_customers: uniqueCustomers
+        },
+        byPaymentMethod
       } 
     });
   } catch (error) {

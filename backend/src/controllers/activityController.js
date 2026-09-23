@@ -5,28 +5,24 @@ import { v4 as uuidv4 } from 'uuid';
 export const getActivityLog = (req, res) => {
   try {
     const { chairId, type, limit = 50, offset = 0 } = req.query;
-    let query = 'SELECT * FROM activity_log';
-    const conditions = [];
-    const params = [];
+    let activities = db.getAll('activity_log');
 
+    // Apply filters
     if (chairId) {
-      conditions.push('chair_id = ?');
-      params.push(chairId);
+      activities = activities.filter(a => a.chair_id === chairId);
     }
-
     if (type) {
-      conditions.push('type = ?');
-      params.push(type);
+      activities = activities.filter(a => a.type === type);
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    // Sort by timestamp descending
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    // Apply pagination
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
+    activities = activities.slice(offsetNum, offsetNum + limitNum);
 
-    const activities = db.prepare(query).all(...params);
     res.json({ success: true, data: activities });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -51,14 +47,16 @@ export const addActivity = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid activity type' });
     }
 
-    const id = uuidv4();
-    const stmt = db.prepare(`
-      INSERT INTO activity_log (id, chair_id, message, confidence, type)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, chairId, message, confidence, type);
+    const activity = {
+      id: uuidv4(),
+      chair_id: chairId,
+      message,
+      confidence: Number(confidence),
+      type,
+      timestamp: new Date().toISOString()
+    };
 
-    const activity = db.prepare('SELECT * FROM activity_log WHERE id = ?').get(id);
+    db.insert('activity_log', activity);
     res.status(201).json({ success: true, data: activity });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -68,8 +66,8 @@ export const addActivity = (req, res) => {
 // Clear activity log (for testing)
 export const clearActivityLog = (req, res) => {
   try {
-    const result = db.prepare('DELETE FROM activity_log').run();
-    res.json({ success: true, message: `Cleared ${result.changes} activity entries` });
+    const count = db.clear('activity_log');
+    res.json({ success: true, message: `Cleared ${count} activity entries` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -1,129 +1,139 @@
-import Database from 'better-sqlite3';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dbPath = join(__dirname, '..', '..', 'data', 'barberai.db');
+const dataDir = join(__dirname, '..', '..', 'data');
+const dbPath = join(dataDir, 'barberai.json');
 
 // Ensure data directory exists
-import { mkdirSync } from 'fs';
-mkdirSync(join(__dirname, '..', '..', 'data'), { recursive: true });
+mkdirSync(dataDir, { recursive: true });
 
-const db = new Database(dbPath);
+// Database structure
+const defaultData = {
+  services: [],
+  barbers: [],
+  cameras: [],
+  sessions: [],
+  detected_services: [],
+  transactions: [],
+  transaction_services: [],
+  activity_log: []
+};
 
-// Enable WAL mode for better concurrent performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Load or initialize database
+function loadDB() {
+  if (existsSync(dbPath)) {
+    try {
+      const data = readFileSync(dbPath, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Error loading database, creating new one:', error);
+      return { ...defaultData };
+    }
+  }
+  return { ...defaultData };
+}
 
-// Initialize database schema
-db.exec(`
-  -- Services table
-  CREATE TABLE IF NOT EXISTS services (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL UNIQUE,
-    price INTEGER NOT NULL,
-    duration INTEGER NOT NULL,
-    enabled INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-  );
+// Save database to file
+function saveDB(data) {
+  writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+}
 
-  -- Barbers table
-  CREATE TABLE IF NOT EXISTS barbers (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    avatar TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+// Initialize database
+let db = loadDB();
 
-  -- Cameras table
-  CREATE TABLE IF NOT EXISTS cameras (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    chair_id TEXT NOT NULL,
-    stream_url TEXT,
-    status TEXT NOT NULL DEFAULT 'online' CHECK(status IN ('online', 'offline')),
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-  );
+// Database helper methods
+const database = {
+  // Get all records from a table
+  getAll(table) {
+    return db[table] || [];
+  },
 
-  -- Customer sessions table
-  CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    chair_id TEXT NOT NULL,
-    customer_name TEXT NOT NULL,
-    customer_id TEXT NOT NULL,
-    barber_id TEXT NOT NULL,
-    barber_name TEXT NOT NULL,
-    start_time TEXT NOT NULL DEFAULT (datetime('now')),
-    end_time TEXT,
-    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed', 'paid')),
-    total_bill INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (barber_id) REFERENCES barbers(id)
-  );
+  // Get single record by ID
+  getById(table, id) {
+    const records = db[table] || [];
+    return records.find(r => r.id === id);
+  },
 
-  -- Detected services within a session
-  CREATE TABLE IF NOT EXISTS detected_services (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    chair_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    confidence INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'detected' CHECK(status IN ('detected', 'confirmed', 'charged', 'rejected')),
-    price INTEGER NOT NULL,
-    detected_at TEXT NOT NULL DEFAULT (datetime('now')),
-    completed_at TEXT,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-  );
+  // Get records by field value
+  getByField(table, field, value) {
+    const records = db[table] || [];
+    return records.filter(r => r[field] === value);
+  },
 
-  -- Transactions table
-  CREATE TABLE IF NOT EXISTS transactions (
-    id TEXT PRIMARY KEY,
-    transaction_id TEXT NOT NULL UNIQUE,
-    session_id TEXT NOT NULL,
-    customer_id TEXT NOT NULL,
-    customer_name TEXT NOT NULL,
-    barber_name TEXT NOT NULL,
-    amount INTEGER NOT NULL,
-    payment_method TEXT NOT NULL CHECK(payment_method IN ('telebirr', 'cbe_birr', 'bank_transfer', 'cash', 'card')),
-    status TEXT NOT NULL DEFAULT 'paid' CHECK(status IN ('paid', 'pending', 'failed')),
-    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
-  );
+  // Insert a record
+  insert(table, record) {
+    if (!db[table]) {
+      db[table] = [];
+    }
+    db[table].push(record);
+    saveDB(db);
+    return record;
+  },
 
-  -- Transaction services (many-to-many)
-  CREATE TABLE IF NOT EXISTS transaction_services (
-    transaction_id TEXT NOT NULL,
-    service_name TEXT NOT NULL,
-    PRIMARY KEY (transaction_id, service_name),
-    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
-  );
+  // Update a record
+  update(table, id, updates) {
+    const records = db[table] || [];
+    const index = records.findIndex(r => r.id === id);
+    if (index !== -1) {
+      records[index] = { ...records[index], ...updates };
+      saveDB(db);
+      return records[index];
+    }
+    return null;
+  },
 
-  -- Activity log
-  CREATE TABLE IF NOT EXISTS activity_log (
-    id TEXT PRIMARY KEY,
-    chair_id TEXT NOT NULL,
-    message TEXT NOT NULL,
-    confidence INTEGER NOT NULL,
-    type TEXT NOT NULL CHECK(type IN (
-      'service_start', 'service_detect', 'service_complete',
-      'customer_enter', 'customer_leave', 'payment', 'bill_generated'
-    )),
-    timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+  // Delete a record
+  delete(table, id) {
+    const records = db[table] || [];
+    const index = records.findIndex(r => r.id === id);
+    if (index !== -1) {
+      const deleted = records.splice(index, 1)[0];
+      saveDB(db);
+      return deleted;
+    }
+    return null;
+  },
 
-  -- Indexes for performance
-  CREATE INDEX IF NOT EXISTS idx_sessions_chair ON sessions(chair_id);
-  CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
-  CREATE INDEX IF NOT EXISTS idx_detected_services_session ON detected_services(session_id);
-  CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp);
-  CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp);
-  CREATE INDEX IF NOT EXISTS idx_activity_chair ON activity_log(chair_id);
-`);
+  // Delete records by field value
+  deleteByField(table, field, value) {
+    const records = db[table] || [];
+    const filtered = records.filter(r => r[field] !== value);
+    const deletedCount = records.length - filtered.length;
+    db[table] = filtered;
+    saveDB(db);
+    return deletedCount;
+  },
 
-export default db;
+  // Clear all records from a table
+  clear(table) {
+    const count = (db[table] || []).length;
+    db[table] = [];
+    saveDB(db);
+    return count;
+  },
+
+  // Query with conditions
+  query(table, conditions = {}) {
+    let records = db[table] || [];
+    
+    // Apply filters
+    for (const [field, value] of Object.entries(conditions)) {
+      if (value !== undefined && value !== null) {
+        records = records.filter(r => r[field] === value);
+      }
+    }
+    
+    return records;
+  },
+
+  // Reload database from file
+  reload() {
+    db = loadDB();
+  }
+};
+
+export default database;

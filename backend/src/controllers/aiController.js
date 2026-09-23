@@ -11,9 +11,8 @@ export const simulateDetection = (req, res) => {
     }
 
     // Get active session for this chair
-    const session = db.prepare(
-      'SELECT * FROM sessions WHERE chair_id = ? AND status = ?'
-    ).get(chairId, 'active');
+    const activeSessions = db.query('sessions', { chair_id: chairId, status: 'active' });
+    const session = activeSessions[0];
 
     if (!session) {
       return res.status(404).json({ success: false, error: 'No active session for this chair' });
@@ -25,37 +24,47 @@ export const simulateDetection = (req, res) => {
     const confidence = Math.floor(Math.random() * 20) + 80; // 80-99%
 
     // Get service details
-    const service = db.prepare('SELECT * FROM services WHERE type = ?').get(randomType);
+    const services = db.getAll('services');
+    const service = services.find(s => s.type === randomType);
+    
     if (!service) {
       return res.status(404).json({ success: false, error: 'Service not found in database' });
     }
 
     // Create detected service
-    const detectedId = uuidv4();
-    db.prepare(`
-      INSERT INTO detected_services (id, session_id, chair_id, type, confidence, price)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(detectedId, session.id, chairId, randomType, confidence, service.price);
+    const detectedService = {
+      id: uuidv4(),
+      session_id: session.id,
+      chair_id: chairId,
+      type: randomType,
+      confidence,
+      status: 'detected',
+      price: service.price,
+      detected_at: new Date().toISOString(),
+      completed_at: null
+    };
+
+    db.insert('detected_services', detectedService);
 
     // Recalculate total bill
-    const result = db.prepare(`
-      SELECT COALESCE(SUM(price), 0) as total
-      FROM detected_services
-      WHERE session_id = ? AND status != 'rejected'
-    `).get(session.id);
+    const allDetectedServices = db.query('detected_services', { session_id: session.id });
+    const totalBill = allDetectedServices
+      .filter(ds => ds.status !== 'rejected')
+      .reduce((sum, ds) => sum + ds.price, 0);
 
-    db.prepare('UPDATE sessions SET total_bill = ? WHERE id = ?')
-      .run(result.total, session.id);
+    db.update('sessions', session.id, { total_bill: totalBill });
 
     // Log activity
-    const activityId = uuidv4();
-    db.prepare(`
-      INSERT INTO activity_log (id, chair_id, message, confidence, type)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(activityId, chairId, `${service.name} detected`, confidence, 'service_detect');
+    const activity = {
+      id: uuidv4(),
+      chair_id: chairId,
+      message: `${service.name} detected`,
+      confidence,
+      type: 'service_detect',
+      timestamp: new Date().toISOString()
+    };
 
-    const detectedService = db.prepare('SELECT * FROM detected_services WHERE id = ?').get(detectedId);
-    const activity = db.prepare('SELECT * FROM activity_log WHERE id = ?').get(activityId);
+    db.insert('activity_log', activity);
 
     res.json({
       success: true,
@@ -64,7 +73,7 @@ export const simulateDetection = (req, res) => {
         activity: activity,
         session: {
           ...session,
-          total_bill: result.total
+          total_bill: totalBill
         }
       }
     });
@@ -83,9 +92,8 @@ export const runDemoSimulation = (req, res) => {
     }
 
     // Check if chair has active session
-    const existingSession = db.prepare(
-      'SELECT * FROM sessions WHERE chair_id = ? AND status = ?'
-    ).get(chairId, 'active');
+    const activeSessions = db.query('sessions', { chair_id: chairId, status: 'active' });
+    const existingSession = activeSessions[0];
 
     if (existingSession) {
       return res.status(400).json({ 
@@ -98,73 +106,88 @@ export const runDemoSimulation = (req, res) => {
     // Create new session
     const sessionId = uuidv4();
     const customerNumber = 1045 + Math.floor(Math.random() * 100);
-    const barbers = [
-      { id: 'b1', name: 'Dawit' },
-      { id: 'b2', name: 'Abel' },
-      { id: 'b3', name: 'Yonas' },
-      { id: 'b4', name: 'Samuel' }
-    ];
+    const barbers = db.getAll('barbers');
     const barber = barbers[parseInt(chairId) - 1] || barbers[0];
 
-    db.prepare(`
-      INSERT INTO sessions (id, chair_id, customer_name, customer_id, barber_id, barber_name)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      sessionId,
-      chairId,
-      `Customer #${customerNumber}`,
-      String(customerNumber),
-      barber.id,
-      barber.name
-    );
+    const session = {
+      id: sessionId,
+      chair_id: chairId,
+      customer_name: `Customer #${customerNumber}`,
+      customer_id: String(customerNumber),
+      barber_id: barber?.id || 'b1',
+      barber_name: barber?.name || 'Dawit',
+      start_time: new Date().toISOString(),
+      end_time: null,
+      status: 'active',
+      total_bill: 0,
+      created_at: new Date().toISOString()
+    };
+
+    db.insert('sessions', session);
 
     // Log customer entry
-    const entryActivityId = uuidv4();
-    db.prepare(`
-      INSERT INTO activity_log (id, chair_id, message, confidence, type)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(entryActivityId, chairId, `Customer #${customerNumber} entered`, 99, 'customer_enter');
+    const entryActivity = {
+      id: uuidv4(),
+      chair_id: chairId,
+      message: `Customer #${customerNumber} entered`,
+      confidence: 99,
+      type: 'customer_enter',
+      timestamp: new Date().toISOString()
+    };
+    db.insert('activity_log', entryActivity);
 
     // Add some detected services
-    const services = [
+    const servicesToDetect = [
       { type: 'haircut', confidence: 96 },
       { type: 'beard_trim', confidence: 91 },
       { type: 'hair_wash', confidence: 88 }
     ];
 
+    const allServices = db.getAll('services');
     let totalBill = 0;
-    services.forEach(svc => {
-      const service = db.prepare('SELECT * FROM services WHERE type = ?').get(svc.type);
-      if (service) {
-        const detectedId = uuidv4();
-        db.prepare(`
-          INSERT INTO detected_services (id, session_id, chair_id, type, confidence, price, status)
-          VALUES (?, ?, ?, ?, ?, ?, 'confirmed')
-        `).run(detectedId, sessionId, chairId, svc.type, svc.confidence, service.price);
 
+    servicesToDetect.forEach(svc => {
+      const service = allServices.find(s => s.type === svc.type);
+      if (service) {
+        const detectedService = {
+          id: uuidv4(),
+          session_id: sessionId,
+          chair_id: chairId,
+          type: svc.type,
+          confidence: svc.confidence,
+          status: 'confirmed',
+          price: service.price,
+          detected_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        };
+
+        db.insert('detected_services', detectedService);
         totalBill += service.price;
 
         // Log activity
-        const activityId = uuidv4();
-        db.prepare(`
-          INSERT INTO activity_log (id, chair_id, message, confidence, type)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(activityId, chairId, `${service.name} detected`, svc.confidence, 'service_detect');
+        const activity = {
+          id: uuidv4(),
+          chair_id: chairId,
+          message: `${service.name} detected`,
+          confidence: svc.confidence,
+          type: 'service_detect',
+          timestamp: new Date().toISOString()
+        };
+        db.insert('activity_log', activity);
       }
     });
 
     // Update session total
-    db.prepare('UPDATE sessions SET total_bill = ? WHERE id = ?').run(totalBill, sessionId);
+    db.update('sessions', sessionId, { total_bill: totalBill });
 
-    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
-    const detectedServices = db.prepare(
-      'SELECT * FROM detected_services WHERE session_id = ? ORDER BY detected_at'
-    ).all(sessionId);
+    const updatedSession = db.getById('sessions', sessionId);
+    const detectedServices = db.query('detected_services', { session_id: sessionId })
+      .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
 
     res.status(201).json({
       success: true,
       data: {
-        session: { ...session, detectedServices },
+        session: { ...updatedSession, detectedServices },
         totalBill
       }
     });

@@ -3,6 +3,16 @@ import { v4 as uuidv4 } from 'uuid';
 
 console.log('🌱 Seeding database...\n');
 
+// Clear existing data
+db.clear('services');
+db.clear('barbers');
+db.clear('cameras');
+db.clear('sessions');
+db.clear('detected_services');
+db.clear('transactions');
+db.clear('transaction_services');
+db.clear('activity_log');
+
 // Seed services
 const services = [
   { name: 'Haircut', type: 'haircut', price: 300, duration: 30 },
@@ -14,12 +24,14 @@ const services = [
 ];
 
 console.log('📋 Seeding services...');
-const insertService = db.prepare(
-  'INSERT OR IGNORE INTO services (id, name, type, price, duration) VALUES (?, ?, ?, ?, ?)'
-);
-
 services.forEach(service => {
-  insertService.run(uuidv4(), service.name, service.type, service.price, service.duration);
+  db.insert('services', {
+    id: uuidv4(),
+    ...service,
+    enabled: 1,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
 });
 console.log(`✅ Seeded ${services.length} services\n`);
 
@@ -32,12 +44,12 @@ const barbers = [
 ];
 
 console.log('💈 Seeding barbers...');
-const insertBarber = db.prepare(
-  'INSERT OR IGNORE INTO barbers (id, name) VALUES (?, ?)'
-);
-
 barbers.forEach(barber => {
-  insertBarber.run(barber.id, barber.name);
+  db.insert('barbers', {
+    ...barber,
+    active: 1,
+    created_at: new Date().toISOString()
+  });
 });
 console.log(`✅ Seeded ${barbers.length} barbers\n`);
 
@@ -50,26 +62,21 @@ const cameras = [
 ];
 
 console.log('📹 Seeding cameras...');
-const insertCamera = db.prepare(
-  'INSERT OR IGNORE INTO cameras (id, name, chair_id, status) VALUES (?, ?, ?, ?)'
-);
-
 cameras.forEach(camera => {
-  insertCamera.run(camera.id, camera.name, camera.chairId, 'online');
+  db.insert('cameras', {
+    id: camera.id,
+    name: camera.name,
+    chair_id: camera.chairId,
+    status: 'online',
+    stream_url: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
 });
 console.log(`✅ Seeded ${cameras.length} cameras\n`);
 
 // Seed some sample transactions
 console.log('💰 Seeding sample transactions...');
-const insertTransaction = db.prepare(`
-  INSERT INTO transactions (id, transaction_id, session_id, customer_id, customer_name, barber_name, amount, payment_method, timestamp)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-const insertTxService = db.prepare(
-  'INSERT INTO transaction_services (transaction_id, service_name) VALUES (?, ?)'
-);
-
 const sampleTransactions = [
   {
     customerId: '1038',
@@ -105,36 +112,30 @@ sampleTransactions.forEach(tx => {
   const transactionId = `TX-${tx.customerId}`;
   const sessionId = uuidv4();
 
-  insertTransaction.run(
-    txId,
-    transactionId,
-    sessionId,
-    tx.customerId,
-    tx.customerName,
-    tx.barberName,
-    tx.amount,
-    tx.paymentMethod,
-    tx.timestamp
-  );
+  db.insert('transactions', {
+    id: txId,
+    transaction_id: transactionId,
+    session_id: sessionId,
+    customer_id: tx.customerId,
+    customer_name: tx.customerName,
+    barber_name: tx.barberName,
+    amount: tx.amount,
+    payment_method: tx.paymentMethod,
+    status: 'paid',
+    timestamp: tx.timestamp
+  });
 
   tx.services.forEach(service => {
-    insertTxService.run(txId, service);
+    db.insert('transaction_services', {
+      transaction_id: txId,
+      service_name: service
+    });
   });
 });
 console.log(`✅ Seeded ${sampleTransactions.length} transactions\n`);
 
 // Seed some active sessions
 console.log('🪑 Seeding active sessions...');
-const insertSession = db.prepare(`
-  INSERT INTO sessions (id, chair_id, customer_name, customer_id, barber_id, barber_name, start_time, total_bill)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-const insertDetectedService = db.prepare(`
-  INSERT INTO detected_services (id, session_id, chair_id, type, confidence, price, status)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
 const activeSessions = [
   {
     chairId: '1',
@@ -158,27 +159,33 @@ const activeSessions = [
 
 activeSessions.forEach(session => {
   const sessionId = uuidv4();
-  insertSession.run(
-    sessionId,
-    session.chairId,
-    session.customerName,
-    session.customerId,
-    session.barberId,
-    session.barberName,
-    new Date().toISOString(),
-    session.totalBill
-  );
+  
+  db.insert('sessions', {
+    id: sessionId,
+    chair_id: session.chairId,
+    customer_name: session.customerName,
+    customer_id: session.customerId,
+    barber_id: session.barberId,
+    barber_name: session.barberName,
+    start_time: new Date().toISOString(),
+    end_time: null,
+    status: 'active',
+    total_bill: session.totalBill,
+    created_at: new Date().toISOString()
+  });
 
   session.services.forEach(service => {
-    insertDetectedService.run(
-      uuidv4(),
-      sessionId,
-      session.chairId,
-      service.type,
-      service.confidence,
-      service.price,
-      service.status
-    );
+    db.insert('detected_services', {
+      id: uuidv4(),
+      session_id: sessionId,
+      chair_id: session.chairId,
+      type: service.type,
+      confidence: service.confidence,
+      status: service.status,
+      price: service.price,
+      detected_at: new Date().toISOString(),
+      completed_at: service.status === 'confirmed' ? new Date().toISOString() : null
+    });
   });
 });
 console.log(`✅ Seeded ${activeSessions.length} active sessions\n`);

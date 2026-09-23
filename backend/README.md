@@ -6,14 +6,15 @@ Node.js backend for the BarberAI Visual Service & Payment Counter system.
 
 - **Runtime**: Node.js with ES Modules
 - **Framework**: Express.js
-- **Database**: SQLite (via better-sqlite3)
-- **Validation**: Built-in validation
+- **Database**: JSON file-based (zero native dependencies!)
 - **CORS**: Enabled for frontend integration
+
+> **Note**: This backend uses a pure JavaScript JSON file-based database instead of SQLite. This means **no native compilation is required** — it works on Windows, Mac, and Linux without any build tools!
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
+- Node.js 18+
+- npm
 
 ## 🛠️ Installation
 
@@ -22,9 +23,11 @@ cd backend
 npm install
 ```
 
+That's it! No build tools, no Python, no native compilation needed.
+
 ## 🗄️ Database Setup
 
-The database is automatically created when the server starts. To seed initial data:
+The database is automatically created as a JSON file when the server starts. To seed initial 
 
 ```bash
 npm run seed
@@ -168,9 +171,13 @@ curl -X POST http://localhost:3001/api/ai/demo \
   }'
 ```
 
-## 🗂️ Database Schema
+## 🗂️ Database
 
-### Tables
+The database is stored as a JSON file at `backend/data/barberai.json`.
+
+### Schema
+
+The JSON file contains these arrays:
 - **services**: Available services with pricing
 - **barbers**: Barber information
 - **cameras**: Camera configuration per chair
@@ -179,12 +186,6 @@ curl -X POST http://localhost:3001/api/ai/demo \
 - **transactions**: Payment records
 - **transaction_services**: Services included in transactions
 - **activity_log**: Real-time activity events
-
-### Key Relationships
-- Sessions → Barbers (many-to-one)
-- Sessions → Detected Services (one-to-many)
-- Sessions → Transactions (one-to-one)
-- Transactions → Transaction Services (one-to-many)
 
 ## 🔧 Configuration
 
@@ -195,40 +196,17 @@ FRONTEND_URL=http://localhost:5173
 NODE_ENV=development
 ```
 
-## 📊 Database Location
-
-SQLite database file: `backend/data/barberai.db`
-
-The database file is automatically created in the `data` directory.
-
-## 🧪 Testing the API
-
-You can test the API using:
-- **cURL** commands (examples above)
-- **Postman** or **Insomnia**
-- **Browser** for GET requests
-- **Frontend application** (configured to connect to this API)
-
-## 🔄 Integration with Frontend
-
-The frontend (React/Vite) should be configured to make API calls to:
-```
-http://localhost:3001/api/*
-```
-
-CORS is enabled for `http://localhost:5173` by default (Vite dev server).
-
 ## 📦 Project Structure
 
 ```
 backend/
 ├── package.json
 ├── data/
-│   └── barberai.db          # SQLite database (auto-created)
+│   └── barberai.json        # JSON database (auto-created)
 └── src/
     ├── index.js             # Main server entry point
     ├── config/
-    │   └── database.js      # Database configuration & schema
+    │   └── database.js      # JSON database wrapper
     ├── controllers/
     │   ├── servicesController.js
     │   ├── sessionsController.js
@@ -249,9 +227,11 @@ backend/
         └── seed.js          # Database seeding script
 ```
 
-## 🚀 Next Steps
+## 🔄 Upgrading to a Real Database
 
-To connect this backend with the frontend:
+When you're ready to move to production, you can easily swap the JSON database for SQLite, PostgreSQL, or MongoDB. The controller interface is designed to make this straightforward — just replace the `database.js` module with one that uses your preferred database driver.
+
+## 🚀 Next Steps
 
 1. Start the backend: `npm run dev`
 2. Seed the database: `npm run seed`

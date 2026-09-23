@@ -1,10 +1,9 @@
 import db from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
 
 // Get all cameras
 export const getAllCameras = (req, res) => {
   try {
-    const cameras = db.prepare('SELECT * FROM cameras ORDER BY chair_id').all();
+    const cameras = db.getAll('cameras').sort((a, b) => a.chair_id.localeCompare(b.chair_id));
     res.json({ success: true, data: cameras });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -14,7 +13,7 @@ export const getAllCameras = (req, res) => {
 // Get camera by ID
 export const getCameraById = (req, res) => {
   try {
-    const camera = db.prepare('SELECT * FROM cameras WHERE id = ?').get(req.params.id);
+    const camera = db.getById('cameras', req.params.id);
     if (!camera) {
       return res.status(404).json({ success: false, error: 'Camera not found' });
     }
@@ -27,7 +26,9 @@ export const getCameraById = (req, res) => {
 // Get camera by chair ID
 export const getCameraByChair = (req, res) => {
   try {
-    const camera = db.prepare('SELECT * FROM cameras WHERE chair_id = ?').get(req.params.chairId);
+    const cameras = db.query('cameras', { chair_id: req.params.chairId });
+    const camera = cameras[0];
+    
     if (!camera) {
       return res.status(404).json({ success: false, error: 'Camera not found for this chair' });
     }
@@ -46,20 +47,16 @@ export const updateCameraStatus = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
-    const camera = db.prepare('SELECT * FROM cameras WHERE id = ?').get(req.params.id);
+    const camera = db.getById('cameras', req.params.id);
     if (!camera) {
       return res.status(404).json({ success: false, error: 'Camera not found' });
     }
 
-    db.prepare(`
-      UPDATE cameras 
-      SET status = COALESCE(?, status),
-          stream_url = COALESCE(?, stream_url),
-          updated_at = datetime('now')
-      WHERE id = ?
-    `).run(status || null, streamUrl || null, req.params.id);
+    const updates = { updated_at: new Date().toISOString() };
+    if (status) updates.status = status;
+    if (streamUrl !== undefined) updates.stream_url = streamUrl;
 
-    const updatedCamera = db.prepare('SELECT * FROM cameras WHERE id = ?').get(req.params.id);
+    const updatedCamera = db.update('cameras', req.params.id, updates);
     res.json({ success: true, data: updatedCamera });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -69,18 +66,18 @@ export const updateCameraStatus = (req, res) => {
 // Get system status
 export const getSystemStatus = (req, res) => {
   try {
-    const cameras = db.prepare('SELECT * FROM cameras').all();
+    const cameras = db.getAll('cameras');
     const onlineCameras = cameras.filter(c => c.status === 'online').length;
     
-    const activeSessions = db.prepare(
-      "SELECT COUNT(*) as count FROM sessions WHERE status = 'active'"
-    ).get().count;
+    const activeSessions = db.query('sessions', { status: 'active' }).length;
 
-    const todayTransactions = db.prepare(`
-      SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as revenue
-      FROM transactions 
-      WHERE date(timestamp) = date('now') AND status = 'paid'
-    `).get();
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const todayTransactions = db.getAll('transactions')
+      .filter(t => t.status === 'paid' && new Date(t.timestamp) >= todayStart);
+    
+    const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     res.json({
       success: true,
@@ -91,8 +88,8 @@ export const getSystemStatus = (req, res) => {
         detection: activeSessions > 0 ? 'running' : 'idle',
         payment: 'ready',
         activeSessions,
-        todayRevenue: todayTransactions.revenue,
-        todayTransactions: todayTransactions.count
+        todayRevenue,
+        todayTransactions: todayTransactions.length
       }
     });
   } catch (error) {
