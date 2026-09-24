@@ -29,7 +29,7 @@ export const getActivityLog = async (req, res) => {
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await database.query(query, params);
-    res.json({ success: true,  result.rows });
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Error fetching activity log:', error);
     res.status(500).json({ success: false, error: error.message });

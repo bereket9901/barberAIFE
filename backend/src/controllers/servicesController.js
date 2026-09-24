@@ -7,7 +7,7 @@ export const getAllServices = async (req, res) => {
     const result = await database.query(
       'SELECT * FROM services ORDER BY name ASC'
     );
-    res.json({ success: true,  result.rows });
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Error fetching services:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -26,7 +26,7 @@ export const getServiceById = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Service not found' });
     }
     
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error fetching service:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -84,7 +84,7 @@ export const updateService = async (req, res) => {
       [name, type, price, duration, enabled, id]
     );
 
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(400).json({ success: false, error: 'Service type already exists' });

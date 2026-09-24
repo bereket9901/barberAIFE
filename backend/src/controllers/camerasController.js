@@ -6,7 +6,7 @@ export const getAllCameras = async (req, res) => {
     const result = await database.query(
       'SELECT * FROM cameras ORDER BY chair_id ASC'
     );
-    res.json({ success: true,  result.rows });
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Error fetching cameras:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -25,7 +25,7 @@ export const getCameraById = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Camera not found' });
     }
 
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error fetching camera:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -44,7 +44,7 @@ export const getCameraByChair = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Camera not found for this chair' });
     }
 
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error fetching camera by chair:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -80,7 +80,7 @@ export const updateCameraStatus = async (req, res) => {
       [status, streamUrl, req.params.id]
     );
 
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error updating camera:', error);
     res.status(500).json({ success: false, error: error.message });

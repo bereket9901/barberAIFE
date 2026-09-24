@@ -221,7 +221,7 @@ export const updateDetectedServiceStatus = async (req, res) => {
     // Recalculate total bill
     await recalculateTotalBill(service.session_id);
 
-    res.json({ success: true,  result.rows[0] });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error updating detected service status:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -254,7 +254,7 @@ export const completeSession = async (req, res) => {
       detectedServices: servicesResult.rows
     };
 
-    res.json({ success: true,  session });
+    res.json({ success: true, data: session });
   } catch (error) {
     console.error('Error completing session:', error);
     res.status(500).json({ success: false, error: error.message });
