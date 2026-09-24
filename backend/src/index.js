@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import database from './config/database.js';
 import { errorHandler, notFoundHandler, requestLogger } from './middleware/errorHandler.js';
 import servicesRouter from './routes/services.js';
 import sessionsRouter from './routes/sessions.js';
@@ -20,12 +21,25 @@ app.use(express.json());
 app.use(requestLogger);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'BarberAI Backend API'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    await database.query('SELECT 1');
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'BarberAI Backend API',
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      service: 'BarberAI Backend API',
+      database: 'disconnected',
+      error: error.message
+    });
+  }
 });
 
 // API Routes
@@ -41,7 +55,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
@@ -50,6 +64,7 @@ app.listen(PORT, () => {
 ║   📡 Server:    http://localhost:${PORT}                     ║
 ║   🔌 API:       http://localhost:${PORT}/api                 ║
 ║   💚 Health:    http://localhost:${PORT}/health              ║
+║   🗄️  Database: PostgreSQL                                ║
 ║                                                           ║
 ║   📋 Available endpoints:                                 ║
 ║   • GET    /api/services                                  ║

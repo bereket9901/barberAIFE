@@ -1,218 +1,264 @@
-import db from '../config/database.js';
+import database from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Get all transactions
-export const getAllTransactions = (req, res) => {
+export const getAllTransactions = async (req, res) => {
   try {
     const { paymentMethod, status, limit = 50, offset = 0 } = req.query;
-    let transactions = db.getAll('transactions');
+    
+    let query = `
+      SELECT t.*,
+             json_agg(ts.service_name) as services
+      FROM transactions t
+      LEFT JOIN transaction_services ts ON t.id = ts.transaction_id
+    `;
+    
+    const conditions = [];
+    const params = [];
+    let paramCount = 1;
 
-    // Apply filters
     if (paymentMethod) {
-      transactions = transactions.filter(t => t.payment_method === paymentMethod);
+      conditions.push(`t.payment_method = $${paramCount++}`);
+      params.push(paymentMethod);
     }
+
     if (status) {
-      transactions = transactions.filter(t => t.status === status);
+      conditions.push(`t.status = $${paramCount++}`);
+      params.push(status);
     }
 
-    // Sort by timestamp descending
-    transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
 
-    // Apply pagination
-    const limitNum = parseInt(limit);
-    const offsetNum = parseInt(offset);
-    transactions = transactions.slice(offsetNum, offsetNum + limitNum);
+    query += ` GROUP BY t.id ORDER BY t.timestamp DESC LIMIT $${paramCount++} OFFSET $${paramCount++}`;
+    params.push(parseInt(limit), parseInt(offset));
 
-    // Attach services to each transaction
-    const transactionsWithServices = transactions.map(tx => {
-      const services = db.query('transaction_services', { transaction_id: tx.id })
-        .map(row => row.service_name);
-      return { ...tx, services };
-    });
+    const result = await database.query(query, params);
+    
+    const transactions = result.rows.map(tx => ({
+      ...tx,
+      services: tx.services || []
+    }));
 
-    res.json({ success: true, data: transactionsWithServices });
+    res.json({ success: true,  transactions });
   } catch (error) {
+    console.error('Error fetching transactions:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get transaction by ID
-export const getTransactionById = (req, res) => {
+export const getTransactionById = async (req, res) => {
   try {
-    const transaction = db.getById('transactions', req.params.id);
-    if (!transaction) {
+    const txResult = await database.query(
+      'SELECT * FROM transactions WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (txResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const services = db.query('transaction_services', { transaction_id: transaction.id })
-      .map(row => row.service_name);
+    const servicesResult = await database.query(
+      'SELECT service_name FROM transaction_services WHERE transaction_id = $1',
+      [req.params.id]
+    );
 
-    res.json({ success: true, data: { ...transaction, services } });
+    const transaction = {
+      ...txResult.rows[0],
+      services: servicesResult.rows.map(row => row.service_name)
+    };
+
+    res.json({ success: true,  transaction });
   } catch (error) {
+    console.error('Error fetching transaction:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get transaction by transaction ID (TX-XXXX format)
-export const getTransactionByTxId = (req, res) => {
+export const getTransactionByTxId = async (req, res) => {
   try {
-    const transactions = db.getAll('transactions');
-    const transaction = transactions.find(t => t.transaction_id === req.params.txId);
-    
-    if (!transaction) {
+    const txResult = await database.query(
+      'SELECT * FROM transactions WHERE transaction_id = $1',
+      [req.params.txId]
+    );
+
+    if (txResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const services = db.query('transaction_services', { transaction_id: transaction.id })
-      .map(row => row.service_name);
+    const servicesResult = await database.query(
+      'SELECT service_name FROM transaction_services WHERE transaction_id = $1',
+      [txResult.rows[0].id]
+    );
 
-    res.json({ success: true, data: { ...transaction, services } });
+    const transaction = {
+      ...txResult.rows[0],
+      services: servicesResult.rows.map(row => row.service_name)
+    };
+
+    res.json({ success: true,  transaction });
   } catch (error) {
+    console.error('Error fetching transaction by txId:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Create a new transaction (process payment)
-export const createTransaction = (req, res) => {
+export const createTransaction = async (req, res) => {
+  const client = await database.getClient();
+  
   try {
+    await client.query('BEGIN');
+
     const { sessionId, paymentMethod } = req.body;
 
     if (!sessionId || !paymentMethod) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     const validMethods = ['telebirr', 'cbe_birr', 'bank_transfer', 'cash', 'card'];
     if (!validMethods.includes(paymentMethod)) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'Invalid payment method' });
     }
 
-    const session = db.getById('sessions', sessionId);
-    if (!session) {
+    // Get session
+    const sessionResult = await client.query(
+      'SELECT * FROM sessions WHERE id = $1',
+      [sessionId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
+    const session = sessionResult.rows[0];
+
     if (session.status === 'paid') {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'Session already paid' });
     }
 
     // Get charged services
-    const detectedServices = db.query('detected_services', { session_id: sessionId })
-      .filter(ds => ds.status !== 'rejected');
+    const detectedServicesResult = await client.query(
+      `SELECT ds.*, s.name as service_name
+       FROM detected_services ds
+       LEFT JOIN services s ON ds.type = s.type
+       WHERE ds.session_id = $1 AND ds.status != 'rejected'`,
+      [sessionId]
+    );
+
+    const detectedServices = detectedServicesResult.rows;
 
     if (detectedServices.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'No services to charge' });
     }
-
-    // Get service names
-    const allServices = db.getAll('services');
-    const serviceNames = detectedServices.map(ds => {
-      const service = allServices.find(s => s.type === ds.type);
-      return service ? service.name : ds.type;
-    });
 
     // Create transaction
     const txId = uuidv4();
     const transactionId = `TX-${session.customer_id}`;
 
-    const transaction = {
-      id: txId,
-      transaction_id: transactionId,
-      session_id: sessionId,
-      customer_id: session.customer_id,
-      customer_name: session.customer_name,
-      barber_name: session.barber_name,
-      amount: session.total_bill,
-      payment_method: paymentMethod,
-      status: 'paid',
-      timestamp: new Date().toISOString()
-    };
-
-    db.insert('transactions', transaction);
+    const txResult = await client.query(
+      `INSERT INTO transactions (id, transaction_id, session_id, customer_id, customer_name, barber_name, amount, payment_method)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [txId, transactionId, sessionId, session.customer_id, session.customer_name, session.barber_name, session.total_bill, paymentMethod]
+    );
 
     // Insert transaction services
-    serviceNames.forEach(serviceName => {
-      db.insert('transaction_services', {
-        transaction_id: txId,
-        service_name: serviceName
-      });
-    });
+    for (const ds of detectedServices) {
+      await client.query(
+        'INSERT INTO transaction_services (transaction_id, service_name) VALUES ($1, $2)',
+        [txId, ds.service_name || ds.type]
+      );
+    }
 
     // Mark services as charged
-    detectedServices.forEach(ds => {
-      db.update('detected_services', ds.id, { status: 'charged' });
-    });
+    await client.query(
+      `UPDATE detected_services SET status = 'charged'
+       WHERE session_id = $1 AND status != 'rejected'`,
+      [sessionId]
+    );
 
     // Mark session as paid
-    db.update('sessions', sessionId, {
-      status: 'paid',
-      end_time: new Date().toISOString()
-    });
+    await client.query(
+      `UPDATE sessions SET status = 'paid', end_time = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [sessionId]
+    );
 
-    res.status(201).json({ success: true, data: { ...transaction, services: serviceNames } });
+    await client.query('COMMIT');
+
+    const transaction = {
+      ...txResult.rows[0],
+      services: detectedServices.map(ds => ds.service_name || ds.type)
+    };
+
+    res.status(201).json({ success: true,  transaction });
   } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating transaction:', error);
     res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
   }
 };
 
 // Get transaction statistics
-export const getTransactionStats = (req, res) => {
+export const getTransactionStats = async (req, res) => {
   try {
     const { period = 'today' } = req.query;
     
-    const now = new Date();
-    let startDate;
-    
+    let dateFilter = '';
     switch (period) {
       case 'today':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        dateFilter = "DATE(timestamp) = CURRENT_DATE";
         break;
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        dateFilter = "timestamp >= CURRENT_DATE - INTERVAL '7 days'";
         break;
       case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        dateFilter = "timestamp >= CURRENT_DATE - INTERVAL '30 days'";
         break;
       default:
-        startDate = new Date(0);
+        dateFilter = "1=1";
     }
 
-    const transactions = db.getAll('transactions')
-      .filter(t => t.status === 'paid' && new Date(t.timestamp) >= startDate);
+    const statsResult = await database.query(
+      `SELECT 
+         COUNT(*) as total_transactions,
+         COALESCE(SUM(amount), 0) as total_revenue,
+         COALESCE(AVG(amount), 0) as avg_transaction,
+         COUNT(DISTINCT customer_id) as unique_customers
+       FROM transactions
+       WHERE status = 'paid' AND ${dateFilter}`
+    );
 
-    const totalTransactions = transactions.length;
-    const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
-    const avgTransaction = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
-    const uniqueCustomers = new Set(transactions.map(t => t.customer_id)).size;
-
-    // Group by payment method
-    const byMethod = {};
-    transactions.forEach(t => {
-      if (!byMethod[t.payment_method]) {
-        byMethod[t.payment_method] = { count: 0, total: 0 };
-      }
-      byMethod[t.payment_method].count++;
-      byMethod[t.payment_method].total += t.amount;
-    });
-
-    const byPaymentMethod = Object.entries(byMethod).map(([method, data]) => ({
-      payment_method: method,
-      count: data.count,
-      total: data.total
-    }));
+    const byMethodResult = await database.query(
+      `SELECT 
+         payment_method,
+         COUNT(*) as count,
+         SUM(amount) as total
+       FROM transactions
+       WHERE status = 'paid' AND ${dateFilter}
+       GROUP BY payment_method`
+    );
 
     res.json({ 
       success: true, 
-      data: { 
-        summary: {
-          total_transactions: totalTransactions,
-          total_revenue: totalRevenue,
-          avg_transaction: avgTransaction,
-          unique_customers: uniqueCustomers
-        },
-        byPaymentMethod
+       { 
+        summary: statsResult.rows[0],
+        byPaymentMethod: byMethodResult.rows
       } 
     });
   } catch (error) {
+    console.error('Error fetching transaction stats:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

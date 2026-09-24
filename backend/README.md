@@ -6,15 +6,16 @@ Node.js backend for the BarberAI Visual Service & Payment Counter system.
 
 - **Runtime**: Node.js with ES Modules
 - **Framework**: Express.js
-- **Database**: JSON file-based (zero native dependencies!)
+- **Database**: PostgreSQL (production-ready!)
 - **CORS**: Enabled for frontend integration
 
-> **Note**: This backend uses a pure JavaScript JSON file-based database instead of SQLite. This means **no native compilation is required** — it works on Windows, Mac, and Linux without any build tools!
+> **Note**: This backend uses PostgreSQL for robust, scalable data storage. See `POSTGRESQL_SETUP.md` for installation instructions.
 
 ## 📋 Prerequisites
 
 - Node.js 18+
 - npm
+- PostgreSQL 12+
 
 ## 🛠️ Installation
 
@@ -23,7 +24,33 @@ cd backend
 npm install
 ```
 
-That's it! No build tools, no Python, no native compilation needed.
+## 🗄️ Database Setup
+
+See **`POSTGRESQL_SETUP.md`** for complete PostgreSQL installation and setup instructions.
+
+**Quick Setup:**
+
+1. Install PostgreSQL
+2. Create database:
+   ```bash
+   psql -U postgres -c "CREATE DATABASE barberai;"
+   ```
+
+3. Configure `.env` file (copy from `.env.example`):
+   ```bash
+   cp .env.example .env
+   # Edit .env with your PostgreSQL credentials
+   ```
+
+4. Initialize schema:
+   ```bash
+   npm run db:init
+   ```
+
+5. Seed database:
+   ```bash
+   npm run seed
+   ```
 
 ## 🗄️ Database Setup
 
