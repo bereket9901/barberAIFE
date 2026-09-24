@@ -82,7 +82,9 @@ async function seedDatabase() {
       {
         customerId: '1038',
         customerName: 'Customer #1038',
+        barberId: 'b1',
         barberName: 'Dawit',
+        chairId: '1',
         services: ['Haircut', 'Hair Wash'],
         amount: 400,
         paymentMethod: 'telebirr',
@@ -91,7 +93,9 @@ async function seedDatabase() {
       {
         customerId: '1039',
         customerName: 'Customer #1039',
+        barberId: 'b2',
         barberName: 'Abel',
+        chairId: '2',
         services: ['Beard Trim', 'Shaving'],
         amount: 300,
         paymentMethod: 'cbe_birr',
@@ -100,7 +104,9 @@ async function seedDatabase() {
       {
         customerId: '1040',
         customerName: 'Customer #1040',
+        barberId: 'b3',
         barberName: 'Yonas',
+        chairId: '3',
         services: ['Haircut'],
         amount: 300,
         paymentMethod: 'cash',
@@ -113,6 +119,14 @@ async function seedDatabase() {
       const transactionId = `TX-${tx.customerId}`;
       const sessionId = uuidv4();
 
+      // First create the session (required by foreign key)
+      await client.query(
+        `INSERT INTO sessions (id, chair_id, customer_name, customer_id, barber_id, barber_name, start_time, end_time, status, total_bill)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'paid', $9)`,
+        [sessionId, tx.chairId, tx.customerName, tx.customerId, tx.barberId, tx.barberName, tx.timestamp, tx.timestamp, tx.amount]
+      );
+
+      // Then create the transaction
       await client.query(
         `INSERT INTO transactions (id, transaction_id, session_id, customer_id, customer_name, barber_name, amount, payment_method, timestamp)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
