@@ -70,7 +70,7 @@ export const simulateDetection = async (req, res) => {
 
     res.json({
       success: true,
-       {
+      data: {
         detection: detectedResult.rows[0],
         activity: activityResult.rows[0],
         session: {
@@ -101,8 +101,8 @@ export const runDemoSimulation = async (req, res) => {
     );
 
     if (existingSessionResult.rows.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Chair already has an active session',
         session: existingSessionResult.rows[0]
       });
@@ -179,7 +179,7 @@ export const runDemoSimulation = async (req, res) => {
 
     res.status(201).json({
       success: true,
-       {
+      data: {
         session: { ...session, detectedServices: detectedServicesResult.rows },
         totalBill
       }
@@ -193,5 +193,5 @@ export const runDemoSimulation = async (req, res) => {
 // Get detection confidence threshold
 export const getConfidenceThreshold = async (req, res) => {
   // In a real app, this would be configurable
-  res.json({ success: true,  { threshold: 80 } });
+  res.json({ success: true, data: { threshold: 80 } });
 };
