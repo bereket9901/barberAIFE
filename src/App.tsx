@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import LiveCamerasPage from './components/LiveCamerasPage';
 import ServicesPage from './components/ServicesPage';
 import TransactionsPage from './components/TransactionsPage';
+import AITestPage from './components/AITestPage';
 import { useStore } from './store';
 import { cn } from './lib/utils';
 import { Card, CardContent } from './components/ui/card';
@@ -176,6 +177,7 @@ export default function App() {
       case 'transactions': return <TransactionsPage />;
       case 'services': return <ServicesPage />;
       case 'settings': return <SettingsPage />;
+      case 'ai-test': return <AITestPage />;
       default: return <Dashboard />;
     }
   };

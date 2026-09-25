@@ -8,6 +8,7 @@ import transactionsRouter from './routes/transactions.js';
 import camerasRouter from './routes/cameras.js';
 import activityRouter from './routes/activity.js';
 import aiRouter from './routes/ai.js';
+import cvRouter from './routes/cv.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,6 +50,7 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/cameras', camerasRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/cv', cvRouter);
 
 // Error handling
 app.use(notFoundHandler);
@@ -66,17 +68,18 @@ app.listen(PORT, async () => {
 ║   💚 Health:    http://localhost:${PORT}/health              ║
 ║   🗄️  Database: PostgreSQL                                ║
 ║                                                           ║
-║   📋 Available endpoints:                                 ║
-║   • GET    /api/services                                  ║
-║   • GET    /api/sessions                                  ║
-║   • GET    /api/transactions                              ║
-║   • GET    /api/cameras                                   ║
-║   • GET    /api/cameras/status                            ║
-║   • GET    /api/activity                                  ║
-║   • POST   /api/ai/demo                                   ║
-║   • POST   /api/ai/detect                                 ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
+  ║   📋 Available endpoints:                                 ║
+  ║   • GET    /api/services                                  ║
+  ║   • GET    /api/sessions                                  ║
+  ║   • GET    /api/transactions                              ║
+  ║   • GET    /api/cameras                                   ║
+  ║   • GET    /api/cameras/status                            ║
+  ║   • GET    /api/activity                                  ║
+  ║   • POST   /api/ai/demo                                   ║
+  ║   • POST   /api/ai/detect                                 ║
+  ║   • GET    /api/cv/health                                 ║
+  ║   • POST   /api/cv/video-test                             ║
+  ║                                                           ║╚═══════════════════════════════════════════════════════════╝
   `);
 });
 

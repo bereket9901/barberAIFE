@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { cn } from '../lib/utils';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
-  Zap, Bell, Search
+  Zap, Bell, Search, Cpu
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -18,6 +18,7 @@ const navItems = [
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'transactions', label: 'Transactions', icon: Receipt },
   { id: 'services', label: 'Services', icon: Scissors },
+  { id: 'ai-test', label: 'AI Test Lab', icon: Cpu },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
