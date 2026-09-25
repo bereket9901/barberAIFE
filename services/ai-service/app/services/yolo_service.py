@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 from typing import List, Dict, Any, Optional
 import numpy as np
+import torch
 from app.config import settings
 
 
@@ -14,6 +15,15 @@ class YOLOService:
     def _load_model(self):
         """Load YOLOv8 model"""
         print(f"Loading YOLO model: {settings.YOLO_MODEL}")
+        
+        # Handle PyTorch 2.6+ compatibility
+        # Add safe globals for YOLO model loading
+        try:
+            from ultralytics.nn.tasks import DetectionModel
+            torch.serialization.add_safe_globals([DetectionModel])
+        except Exception as e:
+            print(f"Warning: Could not add safe globals: {e}")
+        
         self.model = YOLO(settings.YOLO_MODEL)
         print(f"Model loaded successfully on device: {settings.AI_DEVICE}")
     
