@@ -93,7 +93,7 @@ export const getSystemStatus = async (req, res) => {
     const camerasResult = await database.query('SELECT * FROM cameras');
     const cameras = camerasResult.rows;
     const onlineCameras = cameras.filter(c => c.status === 'online').length;
-    
+
     const activeSessionsResult = await database.query(
       "SELECT COUNT(*) as count FROM sessions WHERE status = 'active'"
     );
@@ -107,7 +107,7 @@ export const getSystemStatus = async (req, res) => {
 
     res.json({
       success: true,
-       {
+      data: {
         aiVision: 'online',
         cameras: cameras.length,
         camerasConnected: onlineCameras,
