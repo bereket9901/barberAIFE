@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const getAllSessions = async (req, res) => {
   try {
     const { status } = req.query;
-    
+
     let query = `
       SELECT s.*, 
              json_agg(
@@ -22,24 +22,24 @@ export const getAllSessions = async (req, res) => {
       FROM sessions s
       LEFT JOIN detected_services ds ON s.id = ds.session_id
     `;
-    
+
     const params = [];
     if (status) {
       query += ' WHERE s.status = $1';
       params.push(status);
     }
-    
+
     query += ' GROUP BY s.id ORDER BY s.start_time DESC';
-    
+
     const result = await database.query(query, params);
-    
+
     // Transform detectedServices from null to empty array
     const sessions = result.rows.map(session => ({
       ...session,
       detectedServices: session.detectedservices || []
     }));
-    
-    res.json({ success: true,  sessions });
+
+    res.json({ success: true, sessions });
   } catch (error) {
     console.error('Error fetching sessions:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -53,7 +53,7 @@ export const getSessionById = async (req, res) => {
       'SELECT * FROM sessions WHERE id = $1',
       [req.params.id]
     );
-    
+
     if (sessionResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
@@ -68,7 +68,7 @@ export const getSessionById = async (req, res) => {
       detectedServices: servicesResult.rows
     };
 
-    res.json({ success: true,  session });
+    res.json({ success: true, session });
   } catch (error) {
     console.error('Error fetching session:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -98,13 +98,13 @@ export const getSessionsByChair = async (req, res) => {
       ORDER BY s.start_time DESC`,
       [req.params.chairId]
     );
-    
+
     const sessions = result.rows.map(session => ({
       ...session,
       detectedServices: session.detectedservices || []
     }));
-    
-    res.json({ success: true,  sessions });
+
+    res.json({ success: true, sessions });
   } catch (error) {
     console.error('Error fetching sessions by chair:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -127,8 +127,8 @@ export const createSession = async (req, res) => {
     );
 
     if (existingSession.rows.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Chair already has an active session',
         existingSession: existingSession.rows[0]
       });
@@ -141,7 +141,7 @@ export const createSession = async (req, res) => {
       [chairId, customerName, customerId, barberId, barberName]
     );
 
-    res.status(201).json({ success: true,  { ...result.rows[0], detectedServices: [] } });
+    res.status(201).json({ success: true, data: { ...result.rows[0], detectedServices: [] } });
   } catch (error) {
     console.error('Error creating session:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -180,7 +180,7 @@ export const addDetectedService = async (req, res) => {
     // Recalculate total bill
     await recalculateTotalBill(sessionId);
 
-    res.status(201).json({ success: true,  result.rows[0] });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error adding detected service:', error);
     res.status(500).json({ success: false, error: error.message });

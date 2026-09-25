@@ -5,14 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 export const getAllTransactions = async (req, res) => {
   try {
     const { paymentMethod, status, limit = 50, offset = 0 } = req.query;
-    
+
     let query = `
       SELECT t.*,
              json_agg(ts.service_name) as services
       FROM transactions t
       LEFT JOIN transaction_services ts ON t.id = ts.transaction_id
     `;
-    
+
     const conditions = [];
     const params = [];
     let paramCount = 1;
@@ -35,13 +35,13 @@ export const getAllTransactions = async (req, res) => {
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await database.query(query, params);
-    
+
     const transactions = result.rows.map(tx => ({
       ...tx,
       services: tx.services || []
     }));
 
-    res.json({ success: true,  transactions });
+    res.json({ success: true, transactions });
   } catch (error) {
     console.error('Error fetching transactions:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -70,7 +70,7 @@ export const getTransactionById = async (req, res) => {
       services: servicesResult.rows.map(row => row.service_name)
     };
 
-    res.json({ success: true,  transaction });
+    res.json({ success: true, transaction });
   } catch (error) {
     console.error('Error fetching transaction:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -99,7 +99,7 @@ export const getTransactionByTxId = async (req, res) => {
       services: servicesResult.rows.map(row => row.service_name)
     };
 
-    res.json({ success: true,  transaction });
+    res.json({ success: true, transaction });
   } catch (error) {
     console.error('Error fetching transaction by txId:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -109,7 +109,7 @@ export const getTransactionByTxId = async (req, res) => {
 // Create a new transaction (process payment)
 export const createTransaction = async (req, res) => {
   const client = await database.getClient();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -200,7 +200,7 @@ export const createTransaction = async (req, res) => {
       services: detectedServices.map(ds => ds.service_name || ds.type)
     };
 
-    res.status(201).json({ success: true,  transaction });
+    res.status(201).json({ success: true, transaction });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating transaction:', error);
@@ -214,7 +214,7 @@ export const createTransaction = async (req, res) => {
 export const getTransactionStats = async (req, res) => {
   try {
     const { period = 'today' } = req.query;
-    
+
     let dateFilter = '';
     switch (period) {
       case 'today':
@@ -250,12 +250,12 @@ export const getTransactionStats = async (req, res) => {
        GROUP BY payment_method`
     );
 
-    res.json({ 
-      success: true, 
-       { 
+    res.json({
+      success: true,
+      data: {
         summary: statsResult.rows[0],
         byPaymentMethod: byMethodResult.rows
-      } 
+      }
     });
   } catch (error) {
     console.error('Error fetching transaction stats:', error);
