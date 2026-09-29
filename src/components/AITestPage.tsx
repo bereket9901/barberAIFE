@@ -1,17 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
-import { Upload, Play, Download, Eye, Cpu, Activity, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
+import { Progress } from "./ui/progress";
+import {
+  Upload,
+  Play,
+  Download,
+  Eye,
+  Cpu,
+  Activity,
+  CheckCircle,
+  XCircle,
+  Loader2,
+} from "lucide-react";
+import axios from "axios";
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = "http://localhost:3001/api";
 
 interface JobStatus {
   job_id: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: "queued" | "processing" | "completed" | "failed";
   progress: number;
   frames_processed: number;
   total_frames: number;
@@ -43,16 +53,20 @@ export default function AITestPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [aiServiceStatus, setAiServiceStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+  const [aiServiceStatus, setAiServiceStatus] = useState<
+    "online" | "offline" | "checking"
+  >("checking");
 
   // Check AI service health
   useEffect(() => {
     const checkHealth = async () => {
       try {
         const response = await axios.get(`${API_URL}/cv/health`);
-        setAiServiceStatus(response.data.data.status === 'online' ? 'online' : 'offline');
+        setAiServiceStatus(
+          response.data.data.status === "ok" ? "online" : "offline",
+        );
       } catch (error) {
-        setAiServiceStatus('offline');
+        setAiServiceStatus("offline");
       }
     };
 
@@ -71,11 +85,14 @@ export default function AITestPage() {
         setJobStatus(response.data.data);
 
         // Stop polling if completed or failed
-        if (response.data.data.status === 'completed' || response.data.data.status === 'failed') {
+        if (
+          response.data.data.status === "completed" ||
+          response.data.data.status === "failed"
+        ) {
           return;
         }
       } catch (error) {
-        console.error('Error polling job status:', error);
+        console.error("Error polling job status:", error);
       }
     };
 
@@ -86,7 +103,7 @@ export default function AITestPage() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
+    if (file && file.type.startsWith("video/")) {
       setSelectedFile(file);
       setJobId(null);
       setJobStatus(null);
@@ -99,19 +116,19 @@ export default function AITestPage() {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('video', selectedFile);
+      formData.append("video", selectedFile);
 
       const response = await axios.post(`${API_URL}/cv/video-test`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
       setJobId(response.data.data.job_id);
       setJobStatus(response.data.data);
     } catch (error) {
-      console.error('Error uploading video:', error);
-      alert('Failed to upload video. Make sure the AI service is running.');
+      console.error("Error uploading video:", error);
+      alert("Failed to upload video. Make sure the AI service is running.");
     } finally {
       setIsUploading(false);
     }
@@ -119,23 +136,27 @@ export default function AITestPage() {
 
   const handleDownloadVideo = () => {
     if (jobId) {
-      window.open(`${API_URL}/cv/video-test/${jobId}/video`, '_blank');
+      window.open(`${API_URL}/cv/video-test/${jobId}/video`, "_blank");
     }
   };
 
   const handleDownloadTracks = async () => {
     if (jobId) {
       try {
-        const response = await axios.get(`${API_URL}/cv/video-test/${jobId}/tracks`);
-        const blob = new Blob([JSON.stringify(response.data.data, null, 2)], { type: 'application/json' });
+        const response = await axios.get(
+          `${API_URL}/cv/video-test/${jobId}/tracks`,
+        );
+        const blob = new Blob([JSON.stringify(response.data.data, null, 2)], {
+          type: "application/json",
+        });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = `${jobId}_tracks.json`;
         a.click();
         window.URL.revokeObjectURL(url);
       } catch (error) {
-        console.error('Error downloading tracks:', error);
+        console.error("Error downloading tracks:", error);
       }
     }
   };
@@ -145,7 +166,8 @@ export default function AITestPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">🧪 YOLOv8 Test Lab</h1>
         <p className="text-muted-foreground">
-          Computer vision prototype - Person detection and tracking with YOLOv8 + ByteTrack
+          Computer vision prototype - Person detection and tracking with YOLOv8
+          + ByteTrack
         </p>
       </div>
 
@@ -157,11 +179,19 @@ export default function AITestPage() {
               <Cpu className="h-5 w-5" />
               <div>
                 <p className="font-semibold">AI Service Status</p>
-                <p className="text-sm text-muted-foreground">Python YOLOv8 + ByteTrack Service</p>
+                <p className="text-sm text-muted-foreground">
+                  Python YOLOv8 + ByteTrack Service
+                </p>
               </div>
             </div>
-            <Badge variant={aiServiceStatus === 'online' ? 'default' : 'destructive'}>
-              {aiServiceStatus === 'checking' ? 'Checking...' : aiServiceStatus === 'online' ? 'Online' : 'Offline'}
+            <Badge
+              variant={aiServiceStatus === "online" ? "default" : "destructive"}
+            >
+              {aiServiceStatus === "checking"
+                ? "Checking..."
+                : aiServiceStatus === "online"
+                  ? "Online"
+                  : "Offline"}
             </Badge>
           </div>
         </CardContent>
@@ -190,7 +220,9 @@ export default function AITestPage() {
             >
               <Upload className="h-12 w-12 text-muted-foreground" />
               <p className="text-sm font-medium">
-                {selectedFile ? selectedFile.name : 'Click to select video file'}
+                {selectedFile
+                  ? selectedFile.name
+                  : "Click to select video file"}
               </p>
               <p className="text-xs text-muted-foreground">
                 MP4, AVI, MOV (Max 500MB)
@@ -200,7 +232,9 @@ export default function AITestPage() {
 
           <Button
             onClick={handleUpload}
-            disabled={!selectedFile || isUploading || aiServiceStatus !== 'online'}
+            disabled={
+              !selectedFile || isUploading || aiServiceStatus !== "online"
+            }
             className="w-full"
           >
             {isUploading ? (
@@ -216,16 +250,20 @@ export default function AITestPage() {
             )}
           </Button>
 
-          {aiServiceStatus !== 'online' && (
+          {aiServiceStatus !== "online" && (
             <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <p className="text-sm text-destructive font-medium">
                 ⚠️ AI Service is offline. Please start the Python AI service:
               </p>
               <code className="text-xs block mt-2 p-2 bg-background rounded">
-                cd services/ai-service<br />
-                python -m venv .venv<br />
-                source .venv/bin/activate  # or .venv\Scripts\activate on Windows<br />
-                pip install -r requirements.txt<br />
+                cd services/ai-service
+                <br />
+                python -m venv .venv
+                <br />
+                source .venv/bin/activate # or .venv\Scripts\activate on Windows
+                <br />
+                pip install -r requirements.txt
+                <br />
                 uvicorn app.main:app --reload --port 8001
               </code>
             </div>
@@ -245,27 +283,38 @@ export default function AITestPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {jobStatus.status === 'processing' && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-                {jobStatus.status === 'completed' && <CheckCircle className="h-5 w-5 text-green-500" />}
-                {jobStatus.status === 'failed' && <XCircle className="h-5 w-5 text-destructive" />}
-                <span className="font-medium capitalize">{jobStatus.status}</span>
+                {jobStatus.status === "processing" && (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                )}
+                {jobStatus.status === "completed" && (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                )}
+                {jobStatus.status === "failed" && (
+                  <XCircle className="h-5 w-5 text-destructive" />
+                )}
+                <span className="font-medium capitalize">
+                  {jobStatus.status}
+                </span>
               </div>
               <span className="text-sm text-muted-foreground">
                 Job ID: {jobStatus.job_id.slice(0, 8)}...
               </span>
             </div>
 
-            {jobStatus.status === 'processing' && (
+            {jobStatus.status === "processing" && (
               <>
                 <Progress value={jobStatus.progress} className="h-2" />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Frames: {jobStatus.frames_processed.toLocaleString()} / {jobStatus.total_frames.toLocaleString()}</span>
+                  <span>
+                    Frames: {jobStatus.frames_processed.toLocaleString()} /{" "}
+                    {jobStatus.total_frames.toLocaleString()}
+                  </span>
                   <span>{jobStatus.progress.toFixed(1)}%</span>
                 </div>
               </>
             )}
 
-            {jobStatus.status === 'failed' && (
+            {jobStatus.status === "failed" && (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="text-sm text-destructive">{jobStatus.error}</p>
               </div>
@@ -275,7 +324,7 @@ export default function AITestPage() {
       )}
 
       {/* Results */}
-      {jobStatus?.status === 'completed' && jobStatus.stats && (
+      {jobStatus?.status === "completed" && jobStatus.stats && (
         <>
           {/* Statistics */}
           <Card className="mb-6">
@@ -288,20 +337,36 @@ export default function AITestPage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-primary/5 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Unique Tracks</p>
-                  <p className="text-2xl font-bold">{jobStatus.stats.total_unique_tracks}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Unique Tracks
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {jobStatus.stats.total_unique_tracks}
+                  </p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Max People</p>
-                  <p className="text-2xl font-bold">{jobStatus.stats.max_simultaneous_people}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Max People
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {jobStatus.stats.max_simultaneous_people}
+                  </p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Avg People</p>
-                  <p className="text-2xl font-bold">{jobStatus.stats.average_people_per_frame.toFixed(1)}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Avg People
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {jobStatus.stats.average_people_per_frame.toFixed(1)}
+                  </p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Processing FPS</p>
-                  <p className="text-2xl font-bold">{jobStatus.stats.processing_fps.toFixed(1)}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Processing FPS
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {jobStatus.stats.processing_fps.toFixed(1)}
+                  </p>
                 </div>
               </div>
 
@@ -311,19 +376,30 @@ export default function AITestPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">ID Switches</p>
-                      <p className="font-semibold">{jobStatus.stability.total_id_switches}</p>
+                      <p className="font-semibold">
+                        {jobStatus.stability.total_id_switches}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Stability Score</p>
-                      <p className="font-semibold">{jobStatus.stability.stability_score.toFixed(1)}/100</p>
+                      <p className="font-semibold">
+                        {jobStatus.stability.stability_score.toFixed(1)}/100
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Rating</p>
-                      <p className="font-semibold">{jobStatus.stability.stability_rating}</p>
+                      <p className="font-semibold">
+                        {jobStatus.stability.stability_rating}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Avg Duration</p>
-                      <p className="font-semibold">{jobStatus.stability.average_duration_seconds.toFixed(1)}s</p>
+                      <p className="font-semibold">
+                        {jobStatus.stability.average_duration_seconds.toFixed(
+                          1,
+                        )}
+                        s
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -353,7 +429,11 @@ export default function AITestPage() {
               <Download className="mr-2 h-4 w-4" />
               Download Processed Video
             </Button>
-            <Button onClick={handleDownloadTracks} variant="outline" className="flex-1">
+            <Button
+              onClick={handleDownloadTracks}
+              variant="outline"
+              className="flex-1"
+            >
               <Download className="mr-2 h-4 w-4" />
               Download Track JSON
             </Button>
