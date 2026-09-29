@@ -21,11 +21,11 @@ export const getServiceById = async (req, res) => {
       'SELECT * FROM services WHERE id = $1',
       [req.params.id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Service not found' });
     }
-    
+
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error fetching service:', error);
@@ -49,7 +49,7 @@ export const createService = async (req, res) => {
       [name, type, price, duration, enabled]
     );
 
-    res.status(201).json({ success: true,  result.rows[0] });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
       return res.status(400).json({ success: false, error: 'Service type already exists' });
