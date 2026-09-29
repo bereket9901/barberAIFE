@@ -58,25 +58,36 @@ class YOLOService:
         
         detections = []
         
-        if results and len(results) > 0:
-            result = results[0]
-            
-            if result.boxes is not None and hasattr(result.boxes, 'id'):
-                boxes = result.boxes.xyxy.cpu().numpy()
-                confidences = result.boxes.conf.cpu().numpy()
-                classes = result.boxes.cls.cpu().numpy().astype(int)
-                track_ids = result.boxes.id.cpu().numpy().astype(int)
+        try:
+            if results and len(results) > 0:
+                result = results[0]
                 
-                for i in range(len(boxes)):
-                    # Only track persons (class 0 in COCO)
-                    if classes[i] == 0:
-                        detections.append({
-                            "track_id": int(track_ids[i]),
-                            "bbox": boxes[i].tolist(),
-                            "confidence": float(confidences[i]),
-                            "class": "person",
-                            "class_id": int(classes[i])
-                        })
+                # Check if boxes exist and have tracking IDs
+                if (result.boxes is not None and 
+                    hasattr(result.boxes, 'id') and 
+                    result.boxes.id is not None and
+                    result.boxes.xyxy is not None and
+                    result.boxes.conf is not None and
+                    result.boxes.cls is not None):
+                    
+                    boxes = result.boxes.xyxy.cpu().numpy()
+                    confidences = result.boxes.conf.cpu().numpy()
+                    classes = result.boxes.cls.cpu().numpy().astype(int)
+                    track_ids = result.boxes.id.cpu().numpy().astype(int)
+                    
+                    for i in range(len(boxes)):
+                        # Only track persons (class 0 in COCO)
+                        if classes[i] == 0:
+                            detections.append({
+                                "track_id": int(track_ids[i]),
+                                "bbox": boxes[i].tolist(),
+                                "confidence": float(confidences[i]),
+                                "class": "person",
+                                "class_id": int(classes[i])
+                            })
+        except Exception as e:
+            # Log error but don't crash - just return empty detections for this frame
+            print(f"Warning: Error processing frame detections: {e}")
         
         return detections
     
