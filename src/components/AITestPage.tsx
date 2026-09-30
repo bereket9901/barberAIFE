@@ -105,13 +105,29 @@ export default function AITestPage() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 300000, // 5 minutes for large file uploads
       });
 
       setJobId(response.data.data.job_id);
       setJobStatus(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading video:', error);
-      alert('Failed to upload video. Make sure the AI service is running.');
+      
+      let errorMessage = 'Failed to upload video. ';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage += 'Upload timed out. The file may be too large or your connection is slow. Try a smaller video file.';
+      } else if (error.response?.status === 413) {
+        errorMessage += 'File is too large. Maximum size is 500MB.';
+      } else if (error.response?.status === 503) {
+        errorMessage += 'AI service is not available. Please start the Python AI service.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage += 'Cannot connect to AI service. Make sure it is running on port 8001.';
+      } else {
+        errorMessage += 'Make sure the AI service is running.';
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsUploading(false);
     }

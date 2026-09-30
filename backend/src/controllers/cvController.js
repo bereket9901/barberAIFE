@@ -32,7 +32,9 @@ export const processVideo = async (req, res) => {
         headers: {
           ...formData.getHeaders()
         },
-        timeout: 30000 // 30 second timeout for upload
+        timeout: 300000, // 5 minute timeout for large file uploads
+        maxContentLength: 500 * 1024 * 1024, // 500MB max
+        maxBodyLength: 500 * 1024 * 1024 // 500MB max
       }
     );
 
