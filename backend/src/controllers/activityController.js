@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const getActivityLog = async (req, res) => {
   try {
     const { chairId, type, limit = 50, offset = 0 } = req.query;
-    
+
     let query = 'SELECT * FROM activity_log';
     const conditions = [];
     const params = [];
@@ -61,7 +61,7 @@ export const addActivity = async (req, res) => {
       [chairId, message, confidence, type]
     );
 
-    res.status(201).json({ success: true,  result.rows[0] });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error adding activity:', error);
     res.status(500).json({ success: false, error: error.message });
