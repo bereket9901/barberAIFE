@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { create } from "zustand";
+import { v4 as uuidv4 } from "uuid";
 import type {
   Camera,
   Service,
@@ -8,15 +8,15 @@ import type {
   ActivityEvent,
   DetectedService,
   SystemStatus,
-} from './types';
+} from "./types";
 import {
   servicesAPI,
   sessionsAPI,
   transactionsAPI,
   camerasAPI,
   activityAPI,
-  aiAPI
-} from './lib/api';
+  aiAPI,
+} from "./lib/api";
 
 interface AppState {
   // System
@@ -31,7 +31,7 @@ interface AppState {
   // Services
   services: Service[];
   fetchServices: () => Promise<void>;
-  addService: (service: Omit<Service, 'id'>) => Promise<void>;
+  addService: (service: Omit<Service, "id">) => Promise<void>;
   updateService: (id: string, updates: Partial<Service>) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
 
@@ -40,21 +40,36 @@ interface AppState {
   selectedChairId: string | null;
   selectChair: (chairId: string | null) => void;
   fetchSessions: () => Promise<void>;
-  startSession: (chairId: string, customerName: string, customerId: string, barberId: string, barberName: string) => Promise<void>;
-  addDetectedService: (chairId: string, service: DetectedService) => Promise<void>;
-  updateServiceStatus: (chairId: string, serviceId: string, status: DetectedService['status']) => Promise<void>;
+  startSession: (
+    chairId: string,
+    customerName: string,
+    customerId: string,
+    barberId: string,
+    barberName: string,
+  ) => Promise<void>;
+  addDetectedService: (
+    chairId: string,
+    service: DetectedService,
+  ) => Promise<void>;
+  updateServiceStatus: (
+    chairId: string,
+    serviceId: string,
+    status: DetectedService["status"],
+  ) => Promise<void>;
   completeSession: (chairId: string) => Promise<void>;
   markSessionPaid: (chairId: string) => Promise<void>;
 
   // Transactions
   transactions: Transaction[];
   fetchTransactions: () => Promise<void>;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<Transaction | null>;
+  addTransaction: (
+    transaction: Omit<Transaction, "id">,
+  ) => Promise<Transaction | null>;
 
   // Activity
   activityLog: ActivityEvent[];
   fetchActivity: () => Promise<void>;
-  addActivity: (event: Omit<ActivityEvent, 'id'>) => Promise<void>;
+  addActivity: (event: Omit<ActivityEvent, "id">) => Promise<void>;
 
   // Demo mode
   demoRunning: boolean;
@@ -77,11 +92,11 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   // System
   systemStatus: {
-    aiVision: 'online',
+    aiVision: "online",
     cameras: 4,
     camerasConnected: 4,
-    detection: 'running',
-    payment: 'ready',
+    detection: "running",
+    payment: "ready",
   },
   loading: false,
   error: null,
@@ -94,7 +109,7 @@ export const useStore = create<AppState>((set, get) => ({
       const response = await camerasAPI.getAll();
       set({ cameras: response.data, loading: false });
     } catch (error: any) {
-      console.error('Failed to fetch cameras:', error);
+      console.error("Failed to fetch cameras:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -107,7 +122,7 @@ export const useStore = create<AppState>((set, get) => ({
       const response = await servicesAPI.getAll();
       set({ services: response.data, loading: false });
     } catch (error: any) {
-      console.error('Failed to fetch services:', error);
+      console.error("Failed to fetch services:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -118,7 +133,7 @@ export const useStore = create<AppState>((set, get) => ({
       await get().fetchServices();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to add service:', error);
+      console.error("Failed to add service:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -129,7 +144,7 @@ export const useStore = create<AppState>((set, get) => ({
       await get().fetchServices();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to update service:', error);
+      console.error("Failed to update service:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -140,7 +155,7 @@ export const useStore = create<AppState>((set, get) => ({
       await get().fetchServices();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to delete service:', error);
+      console.error("Failed to delete service:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -154,7 +169,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ loading: true, error: null });
       const response = await sessionsAPI.getAll();
       // Transform backend data to match frontend types
-      const sessions = response.data.map((s: any) => ({
+      const sessions = response.sessions.map((s: any) => ({
         id: s.id,
         chairId: s.chair_id,
         customerName: s.customer_name,
@@ -176,27 +191,41 @@ export const useStore = create<AppState>((set, get) => ({
       }));
       set({ sessions, loading: false });
     } catch (error: any) {
-      console.error('Failed to fetch sessions:', error);
+      console.error("Failed to fetch sessions:", error);
       set({ error: error.message, loading: false });
     }
   },
-  startSession: async (chairId, customerName, customerId, barberId, barberName) => {
+  startSession: async (
+    chairId,
+    customerName,
+    customerId,
+    barberId,
+    barberName,
+  ) => {
     try {
       set({ loading: true, error: null });
-      await sessionsAPI.create({ chairId, customerName, customerId, barberId, barberName });
+      await sessionsAPI.create({
+        chairId,
+        customerName,
+        customerId,
+        barberId,
+        barberName,
+      });
       await get().fetchSessions();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to start session:', error);
+      console.error("Failed to start session:", error);
       set({ error: error.message, loading: false });
     }
   },
   addDetectedService: async (chairId, service) => {
     try {
       set({ loading: true, error: null });
-      const session = get().sessions.find(s => s.chairId === chairId && s.status === 'active');
-      if (!session) throw new Error('No active session found');
-      
+      const session = get().sessions.find(
+        (s) => s.chairId === chairId && s.status === "active",
+      );
+      if (!session) throw new Error("No active session found");
+
       await sessionsAPI.addDetectedService(session.id, {
         type: service.type,
         confidence: service.confidence,
@@ -205,7 +234,7 @@ export const useStore = create<AppState>((set, get) => ({
       await get().fetchSessions();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to add detected service:', error);
+      console.error("Failed to add detected service:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -216,21 +245,23 @@ export const useStore = create<AppState>((set, get) => ({
       await get().fetchSessions();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to update service status:', error);
+      console.error("Failed to update service status:", error);
       set({ error: error.message, loading: false });
     }
   },
   completeSession: async (chairId) => {
     try {
       set({ loading: true, error: null });
-      const session = get().sessions.find(s => s.chairId === chairId && s.status === 'active');
-      if (!session) throw new Error('No active session found');
-      
+      const session = get().sessions.find(
+        (s) => s.chairId === chairId && s.status === "active",
+      );
+      if (!session) throw new Error("No active session found");
+
       await sessionsAPI.complete(session.id);
       await get().fetchSessions();
       set({ loading: false });
     } catch (error: any) {
-      console.error('Failed to complete session:', error);
+      console.error("Failed to complete session:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -246,7 +277,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ loading: true, error: null });
       const response = await transactionsAPI.getAll();
       // Transform backend data to match frontend types
-      const transactions = response.data.map((t: any) => ({
+      const transactions = response.transactions.map((t: any) => ({
         id: t.id,
         sessionId: t.session_id,
         customerId: t.customer_id,
@@ -261,7 +292,7 @@ export const useStore = create<AppState>((set, get) => ({
       }));
       set({ transactions, loading: false });
     } catch (error: any) {
-      console.error('Failed to fetch transactions:', error);
+      console.error("Failed to fetch transactions:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -291,7 +322,7 @@ export const useStore = create<AppState>((set, get) => ({
         transactionId: tx.transaction_id,
       };
     } catch (error: any) {
-      console.error('Failed to add transaction:', error);
+      console.error("Failed to add transaction:", error);
       set({ error: error.message, loading: false });
       return null;
     }
@@ -302,7 +333,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchActivity: async () => {
     try {
       set({ loading: true, error: null });
-      const response = await activityAPI.getAll({ limit: '50' });
+      const response = await activityAPI.getAll({ limit: "50" });
       const activityLog = response.data.map((a: any) => ({
         id: a.id,
         timestamp: a.timestamp,
@@ -313,7 +344,7 @@ export const useStore = create<AppState>((set, get) => ({
       }));
       set({ activityLog, loading: false });
     } catch (error: any) {
-      console.error('Failed to fetch activity:', error);
+      console.error("Failed to fetch activity:", error);
       set({ error: error.message, loading: false });
     }
   },
@@ -322,7 +353,7 @@ export const useStore = create<AppState>((set, get) => ({
       await activityAPI.add(event);
       await get().fetchActivity();
     } catch (error: any) {
-      console.error('Failed to add activity:', error);
+      console.error("Failed to add activity:", error);
     }
   },
 
@@ -333,13 +364,10 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       set({ loading: true, error: null, demoRunning: true });
       await aiAPI.runDemo(chairId);
-      await Promise.all([
-        get().fetchSessions(),
-        get().fetchActivity(),
-      ]);
+      await Promise.all([get().fetchSessions(), get().fetchActivity()]);
       set({ loading: false, demoRunning: false });
     } catch (error: any) {
-      console.error('Failed to run demo:', error);
+      console.error("Failed to run demo:", error);
       set({ error: error.message, loading: false, demoRunning: false });
     }
   },
