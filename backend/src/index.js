@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import database from './config/database.js';
 import { errorHandler, notFoundHandler, requestLogger } from './middleware/errorHandler.js';
 import servicesRouter from './routes/services.js';
@@ -14,11 +16,18 @@ import authRouter from './routes/auth.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Security middleware
+app.use(helmet()); // Security headers
+app.use(cookieParser()); // Parse cookies
+
+// CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(requestLogger);
 

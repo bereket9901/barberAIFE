@@ -160,8 +160,20 @@ const database = {
           role VARCHAR(50) NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'user')),
           active BOOLEAN DEFAULT true,
           last_login TIMESTAMP,
+          failed_login_attempts INTEGER DEFAULT 0,
+          locked_until TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL,
+          token VARCHAR(500) NOT NULL UNIQUE,
+          expires_at TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          revoked BOOLEAN DEFAULT false,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
         -- Create indexes for better performance
