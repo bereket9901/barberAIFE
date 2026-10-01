@@ -7,6 +7,7 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001';
 
 /**
  * Forward video to Python AI service for processing
+ * Now fully asynchronous - returns immediately with job ID
  */
 export const processVideo = async (req, res) => {
   try {
@@ -17,6 +18,8 @@ export const processVideo = async (req, res) => {
       });
     }
 
+    console.log(`Received video upload: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
     // Create form data
     const formData = new FormData();
     formData.append('video', req.file.buffer, {
@@ -24,7 +27,8 @@ export const processVideo = async (req, res) => {
       contentType: req.file.mimetype
     });
 
-    // Forward to Python AI service
+    // Forward to Python AI service with extended timeout
+    // The Python service will accept the file and return immediately with a job ID
     const response = await axios.post(
       `${AI_SERVICE_URL}/api/detect/video`,
       formData,
@@ -32,11 +36,13 @@ export const processVideo = async (req, res) => {
         headers: {
           ...formData.getHeaders()
         },
-        timeout: 300000, // 5 minute timeout for large file uploads
-        maxContentLength: 500 * 1024 * 1024, // 500MB max
-        maxBodyLength: 500 * 1024 * 1024 // 500MB max
+        timeout: 600000, // 10 minute timeout for large file uploads
+        maxContentLength: 1024 * 1024 * 1024, // 1GB max
+        maxBodyLength: 1024 * 1024 * 1024 // 1GB max
       }
     );
+
+    console.log(`Video upload successful, job ID: ${response.data.job_id}`);
 
     res.json({
       success: true,
@@ -50,6 +56,13 @@ export const processVideo = async (req, res) => {
       return res.status(503).json({
         success: false,
         error: 'AI service is not available. Please start the Python AI service.'
+      });
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        error: 'Upload timeout. The file may be too large or the connection is slow. Try a smaller video file.'
       });
     }
 
