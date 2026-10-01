@@ -7,11 +7,17 @@ interface FetchOptions extends RequestInit {
 
 async function fetchAPI(endpoint: string, options: FetchOptions = {}): Promise<any> {
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get token from localStorage
+  const token = localStorage.getItem('accessToken');
+  
   const config: FetchOptions = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
+    credentials: 'include', // Include cookies for refresh token
     ...options,
   };
 
@@ -20,6 +26,52 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}): Promise<a
     const data = await response.json();
 
     if (!response.ok) {
+      // If unauthorized, try to refresh token
+      if (response.status === 401 && !endpoint.includes('/auth/refresh')) {
+        try {
+          // Try to refresh token
+          const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+          
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            const newToken = refreshData.data.accessToken;
+            
+            // Update token in localStorage
+            localStorage.setItem('accessToken', newToken);
+            
+            // Retry original request with new token
+            const retryConfig = {
+              ...config,
+              headers: {
+                ...config.headers,
+                'Authorization': `Bearer ${newToken}`
+              }
+            };
+            
+            const retryResponse = await fetch(url, retryConfig);
+            const retryData = await retryResponse.json();
+            
+            if (!retryResponse.ok) {
+              throw new Error(retryData.error || 'API request failed');
+            }
+            
+            return retryData;
+          } else {
+            // Refresh failed, logout
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('authUser');
+            window.location.href = '/login';
+          }
+        } catch (refreshError) {
+          // Refresh failed, logout
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('authUser');
+          window.location.href = '/login';
+        }
+      }
       throw new Error(data.error || 'API request failed');
     }
 

@@ -1,36 +1,43 @@
-import db from '../config/database.js';
+import database from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Get activity log
-export const getActivityLog = (req, res) => {
+export const getActivityLog = async (req, res) => {
   try {
     const { chairId, type, limit = 50, offset = 0 } = req.query;
-    let activities = db.getAll('activity_log');
 
-    // Apply filters
+    let query = 'SELECT * FROM activity_log';
+    const conditions = [];
+    const params = [];
+    let paramCount = 1;
+
     if (chairId) {
-      activities = activities.filter(a => a.chair_id === chairId);
+      conditions.push(`chair_id = $${paramCount++}`);
+      params.push(chairId);
     }
+
     if (type) {
-      activities = activities.filter(a => a.type === type);
+      conditions.push(`type = $${paramCount++}`);
+      params.push(type);
     }
 
-    // Sort by timestamp descending
-    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
 
-    // Apply pagination
-    const limitNum = parseInt(limit);
-    const offsetNum = parseInt(offset);
-    activities = activities.slice(offsetNum, offsetNum + limitNum);
+    query += ` ORDER BY timestamp DESC LIMIT $${paramCount++} OFFSET $${paramCount++}`;
+    params.push(parseInt(limit), parseInt(offset));
 
-    res.json({ success: true, data: activities });
+    const result = await database.query(query, params);
+    res.json({ success: true, data: result.rows });
   } catch (error) {
+    console.error('Error fetching activity log:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Add activity
-export const addActivity = (req, res) => {
+export const addActivity = async (req, res) => {
   try {
     const { chairId, message, confidence, type } = req.body;
 
@@ -47,28 +54,27 @@ export const addActivity = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid activity type' });
     }
 
-    const activity = {
-      id: uuidv4(),
-      chair_id: chairId,
-      message,
-      confidence: Number(confidence),
-      type,
-      timestamp: new Date().toISOString()
-    };
+    const result = await database.query(
+      `INSERT INTO activity_log (chair_id, message, confidence, type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [chairId, message, confidence, type]
+    );
 
-    db.insert('activity_log', activity);
-    res.status(201).json({ success: true, data: activity });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
+    console.error('Error adding activity:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Clear activity log (for testing)
-export const clearActivityLog = (req, res) => {
+export const clearActivityLog = async (req, res) => {
   try {
-    const count = db.clear('activity_log');
-    res.json({ success: true, message: `Cleared ${count} activity entries` });
+    const result = await database.query('DELETE FROM activity_log');
+    res.json({ success: true, message: `Cleared ${result.rowCount} activity entries` });
   } catch (error) {
+    console.error('Error clearing activity log:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

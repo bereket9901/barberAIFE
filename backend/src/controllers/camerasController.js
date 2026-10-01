@@ -1,45 +1,58 @@
-import db from '../config/database.js';
+import database from '../config/database.js';
 
 // Get all cameras
-export const getAllCameras = (req, res) => {
+export const getAllCameras = async (req, res) => {
   try {
-    const cameras = db.getAll('cameras').sort((a, b) => a.chair_id.localeCompare(b.chair_id));
-    res.json({ success: true, data: cameras });
+    const result = await database.query(
+      'SELECT * FROM cameras ORDER BY chair_id ASC'
+    );
+    res.json({ success: true, data: result.rows });
   } catch (error) {
+    console.error('Error fetching cameras:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get camera by ID
-export const getCameraById = (req, res) => {
+export const getCameraById = async (req, res) => {
   try {
-    const camera = db.getById('cameras', req.params.id);
-    if (!camera) {
+    const result = await database.query(
+      'SELECT * FROM cameras WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Camera not found' });
     }
-    res.json({ success: true, data: camera });
+
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
+    console.error('Error fetching camera:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get camera by chair ID
-export const getCameraByChair = (req, res) => {
+export const getCameraByChair = async (req, res) => {
   try {
-    const cameras = db.query('cameras', { chair_id: req.params.chairId });
-    const camera = cameras[0];
-    
-    if (!camera) {
+    const result = await database.query(
+      'SELECT * FROM cameras WHERE chair_id = $1',
+      [req.params.chairId]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Camera not found for this chair' });
     }
-    res.json({ success: true, data: camera });
+
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
+    console.error('Error fetching camera by chair:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Update camera status
-export const updateCameraStatus = (req, res) => {
+export const updateCameraStatus = async (req, res) => {
   try {
     const { status, streamUrl } = req.body;
 
@@ -47,37 +60,50 @@ export const updateCameraStatus = (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
-    const camera = db.getById('cameras', req.params.id);
-    if (!camera) {
+    // Check if camera exists
+    const existing = await database.query(
+      'SELECT * FROM cameras WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (existing.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Camera not found' });
     }
 
-    const updates = { updated_at: new Date().toISOString() };
-    if (status) updates.status = status;
-    if (streamUrl !== undefined) updates.stream_url = streamUrl;
+    const result = await database.query(
+      `UPDATE cameras 
+       SET status = COALESCE($1, status),
+           stream_url = COALESCE($2, stream_url),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING *`,
+      [status, streamUrl, req.params.id]
+    );
 
-    const updatedCamera = db.update('cameras', req.params.id, updates);
-    res.json({ success: true, data: updatedCamera });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
+    console.error('Error updating camera:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get system status
-export const getSystemStatus = (req, res) => {
+export const getSystemStatus = async (req, res) => {
   try {
-    const cameras = db.getAll('cameras');
+    const camerasResult = await database.query('SELECT * FROM cameras');
+    const cameras = camerasResult.rows;
     const onlineCameras = cameras.filter(c => c.status === 'online').length;
-    
-    const activeSessions = db.query('sessions', { status: 'active' }).length;
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const todayTransactions = db.getAll('transactions')
-      .filter(t => t.status === 'paid' && new Date(t.timestamp) >= todayStart);
-    
-    const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const activeSessionsResult = await database.query(
+      "SELECT COUNT(*) as count FROM sessions WHERE status = 'active'"
+    );
+    const activeSessions = parseInt(activeSessionsResult.rows[0].count);
+
+    const todayTransactionsResult = await database.query(
+      `SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as revenue
+       FROM transactions 
+       WHERE DATE(timestamp) = CURRENT_DATE AND status = 'paid'`
+    );
 
     res.json({
       success: true,
@@ -88,11 +114,12 @@ export const getSystemStatus = (req, res) => {
         detection: activeSessions > 0 ? 'running' : 'idle',
         payment: 'ready',
         activeSessions,
-        todayRevenue,
-        todayTransactions: todayTransactions.length
+        todayRevenue: parseInt(todayTransactionsResult.rows[0].revenue),
+        todayTransactions: parseInt(todayTransactionsResult.rows[0].count)
       }
     });
   } catch (error) {
+    console.error('Error fetching system status:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

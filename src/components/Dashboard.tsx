@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { runDemoSimulation } from '../simulation';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -18,11 +17,21 @@ export default function Dashboard() {
     sessions, transactions, services, systemStatus,
     selectedChairId, selectChair, showBilling, setShowBilling,
     showPayment, setShowPayment, updateServiceStatus,
-    addActivity, demoRunning, setDemoRunning,
+    addActivity, demoRunning, setDemoRunning, runDemo,
     activityLog, paymentSuccess, setPaymentSuccess,
     lastTransaction, setLastTransaction, addTransaction,
-    markSessionPaid,
+    markSessionPaid, fetchSessions, fetchTransactions,
+    fetchActivity, fetchServices, fetchCameras,
   } = useStore();
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchServices();
+    fetchSessions();
+    fetchTransactions();
+    fetchActivity();
+    fetchCameras();
+  }, []);
 
   const [elapsedTimes, setElapsedTimes] = useState<Record<string, string>>({});
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
@@ -49,9 +58,17 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [activeSessions.length]);
 
-  const handleStartDemo = () => {
-    setDemoRunning(true);
-    runDemoSimulation();
+  const handleStartDemo = async () => {
+    // Find an available chair
+    const activeChairs = sessions.filter(s => s.status === 'active').map(s => s.chairId);
+    const availableChair = ['2', '4', '1', '3'].find(c => !activeChairs.includes(c));
+    
+    if (availableChair) {
+      await runDemo(availableChair);
+    } else {
+      // If all chairs are occupied, use chair 2 anyway
+      await runDemo('2');
+    }
   };
 
   const handleConfirmBill = () => {
@@ -59,40 +76,45 @@ export default function Dashboard() {
     setShowPayment(true);
   };
 
-  const handlePayment = (method: string) => {
+  const handlePayment = async (method: string) => {
     if (!selectedChairId) return;
     const session = sessions.find((s) => s.chairId === selectedChairId);
     if (!session) return;
 
-    const txId = `TX-${session.customerId}`;
-    const tx = {
-      sessionId: session.id,
-      customerId: session.customerId,
-      customerName: session.customerName,
-      barberName: session.barberName,
-      services: session.detectedServices
-        .filter((ds) => ds.status !== 'rejected')
-        .map((ds) => services.find((s) => s.type === ds.type)?.name || ds.type),
-      amount: session.totalBill,
-      paymentMethod: method as 'telebirr' | 'cbe_birr' | 'bank_transfer' | 'cash' | 'card',
-      timestamp: new Date().toISOString(),
-      status: 'paid' as const,
-      transactionId: txId,
-    };
+    try {
+      // Call backend API to create transaction
+      const response = await addTransaction({
+        sessionId: session.id,
+        customerId: session.customerId,
+        customerName: session.customerName,
+        barberName: session.barberName,
+        services: session.detectedServices
+          .filter((ds) => ds.status !== 'rejected')
+          .map((ds) => services.find((s) => s.type === ds.type)?.name || ds.type),
+        amount: session.totalBill,
+        paymentMethod: method as 'telebirr' | 'cbe_birr' | 'bank_transfer' | 'cash' | 'card',
+        timestamp: new Date().toISOString(),
+        status: 'paid',
+        transactionId: `TX-${session.customerId}`,
+      });
 
-    addTransaction(tx as any);
-    markSessionPaid(selectedChairId);
-    setLastTransaction({ ...tx, id: 'temp' } as any);
-    setPaymentSuccess(true);
-    setDemoRunning(false);
+      if (response) {
+        setLastTransaction(response as any);
+        setPaymentSuccess(true);
+        setDemoRunning(false);
 
-    addActivity({
-      timestamp: new Date().toISOString(),
-      chairId: selectedChairId,
-      message: `Payment successful — ${session.totalBill} ETB via ${method}`,
-      confidence: 100,
-      type: 'payment',
-    });
+        // Log payment activity
+        await addActivity({
+          timestamp: new Date().toISOString(),
+          chairId: selectedChairId,
+          message: `Payment successful — ${session.totalBill} ETB via ${method}`,
+          confidence: 100,
+          type: 'payment',
+        });
+      }
+    } catch (error) {
+      console.error('Payment failed:', error);
+    }
   };
 
   const handleNewCustomer = () => {

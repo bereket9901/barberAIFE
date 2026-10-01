@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { create } from "zustand";
+import { v4 as uuidv4 } from "uuid";
 import type {
   Camera,
   Service,
@@ -8,42 +8,73 @@ import type {
   ActivityEvent,
   DetectedService,
   SystemStatus,
-} from './types';
+} from "./types";
+import {
+  servicesAPI,
+  sessionsAPI,
+  transactionsAPI,
+  camerasAPI,
+  activityAPI,
+  aiAPI,
+} from "./lib/api";
 
 interface AppState {
   // System
   systemStatus: SystemStatus;
+  loading: boolean;
+  error: string | null;
 
   // Cameras
   cameras: Camera[];
+  fetchCameras: () => Promise<void>;
 
   // Services
   services: Service[];
-  addService: (service: Omit<Service, 'id'>) => void;
-  updateService: (id: string, updates: Partial<Service>) => void;
-  deleteService: (id: string) => void;
+  fetchServices: () => Promise<void>;
+  addService: (service: Omit<Service, "id">) => Promise<void>;
+  updateService: (id: string, updates: Partial<Service>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
 
   // Sessions
   sessions: CustomerSession[];
   selectedChairId: string | null;
   selectChair: (chairId: string | null) => void;
-  startSession: (chairId: string, customerName: string, customerId: string, barberId: string, barberName: string) => void;
-  addDetectedService: (chairId: string, service: DetectedService) => void;
-  updateServiceStatus: (chairId: string, serviceId: string, status: DetectedService['status']) => void;
-  completeSession: (chairId: string) => void;
-  markSessionPaid: (chairId: string) => void;
+  fetchSessions: () => Promise<void>;
+  startSession: (
+    chairId: string,
+    customerName: string,
+    customerId: string,
+    barberId: string,
+    barberName: string,
+  ) => Promise<void>;
+  addDetectedService: (
+    chairId: string,
+    service: DetectedService,
+  ) => Promise<void>;
+  updateServiceStatus: (
+    chairId: string,
+    serviceId: string,
+    status: DetectedService["status"],
+  ) => Promise<void>;
+  completeSession: (chairId: string) => Promise<void>;
+  markSessionPaid: (chairId: string) => Promise<void>;
 
   // Transactions
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  fetchTransactions: () => Promise<void>;
+  addTransaction: (
+    transaction: Omit<Transaction, "id">,
+  ) => Promise<Transaction | null>;
 
   // Activity
   activityLog: ActivityEvent[];
-  addActivity: (event: Omit<ActivityEvent, 'id'>) => void;
+  fetchActivity: () => Promise<void>;
+  addActivity: (event: Omit<ActivityEvent, "id">) => Promise<void>;
 
   // Demo mode
   demoRunning: boolean;
   setDemoRunning: (running: boolean) => void;
+  runDemo: (chairId: string) => Promise<void>;
 
   // Payment
   showPayment: boolean;
@@ -58,149 +89,288 @@ interface AppState {
   setShowBilling: (show: boolean) => void;
 }
 
-const defaultServices: Service[] = [
-  { id: '1', name: 'Haircut', type: 'haircut', price: 300, duration: 30, enabled: true },
-  { id: '2', name: 'Beard Trim', type: 'beard_trim', price: 150, duration: 15, enabled: true },
-  { id: '3', name: 'Hair Wash', type: 'hair_wash', price: 100, duration: 10, enabled: true },
-  { id: '4', name: 'Hair Coloring', type: 'hair_coloring', price: 500, duration: 60, enabled: true },
-  { id: '5', name: 'Shaving', type: 'shaving', price: 150, duration: 20, enabled: true },
-  { id: '6', name: 'Facial', type: 'facial', price: 300, duration: 25, enabled: true },
-];
-
-const defaultCameras: Camera[] = [
-  { id: 'cam-1', name: 'Camera 1', chairId: '1', status: 'online' },
-  { id: 'cam-2', name: 'Camera 2', chairId: '2', status: 'online' },
-  { id: 'cam-3', name: 'Camera 3', chairId: '3', status: 'online' },
-  { id: 'cam-4', name: 'Camera 4', chairId: '4', status: 'online' },
-];
-
-const initialTransactions: Transaction[] = [
-  {
-    id: '1', sessionId: 's1', customerId: '1038', customerName: 'Customer #1038',
-    barberName: 'Dawit', services: ['Haircut', 'Hair Wash'], amount: 400,
-    paymentMethod: 'telebirr', timestamp: '2026-01-15T09:30:00', status: 'paid', transactionId: 'TX-1038'
-  },
-  {
-    id: '2', sessionId: 's2', customerId: '1039', customerName: 'Customer #1039',
-    barberName: 'Abel', services: ['Beard Trim', 'Shaving'], amount: 300,
-    paymentMethod: 'cbe_birr', timestamp: '2026-01-15T10:15:00', status: 'paid', transactionId: 'TX-1039'
-  },
-  {
-    id: '3', sessionId: 's3', customerId: '1040', customerName: 'Customer #1040',
-    barberName: 'Yonas', services: ['Haircut'], amount: 300,
-    paymentMethod: 'cash', timestamp: '2026-01-15T10:45:00', status: 'paid', transactionId: 'TX-1040'
-  },
-];
-
-const initialSessions: CustomerSession[] = [
-  {
-    id: 'sess-1', chairId: '1', customerName: 'Customer #1041', customerId: '1041',
-    barberId: 'b1', barberName: 'Dawit', startTime: '2026-01-15T11:00:00',
-    status: 'active',
-    detectedServices: [
-      { id: 'ds1', type: 'haircut', confidence: 94, status: 'confirmed', detectedAt: '2026-01-15T11:02:00', price: 300 },
-    ],
-    totalBill: 300,
-  },
-  {
-    id: 'sess-3', chairId: '3', customerName: 'Customer #1043', customerId: '1043',
-    barberId: 'b3', barberName: 'Yonas', startTime: '2026-01-15T11:20:00',
-    status: 'active',
-    detectedServices: [
-      { id: 'ds5', type: 'shaving', confidence: 92, status: 'confirmed', detectedAt: '2026-01-15T11:22:00', price: 150 },
-    ],
-    totalBill: 150,
-  },
-];
-
 export const useStore = create<AppState>((set, get) => ({
   // System
   systemStatus: {
-    aiVision: 'online',
+    aiVision: "online",
     cameras: 4,
     camerasConnected: 4,
-    detection: 'running',
-    payment: 'ready',
+    detection: "running",
+    payment: "ready",
   },
+  loading: false,
+  error: null,
 
   // Cameras
-  cameras: defaultCameras,
+  cameras: [],
+  fetchCameras: async () => {
+    try {
+      set({ loading: true, error: null });
+      const response = await camerasAPI.getAll();
+      set({ cameras: response.data, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch cameras:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
 
   // Services
-  services: defaultServices,
-  addService: (service) => set((s) => ({
-    services: [...s.services, { ...service, id: uuidv4() }]
-  })),
-  updateService: (id, updates) => set((s) => ({
-    services: s.services.map((svc) => svc.id === id ? { ...svc, ...updates } : svc)
-  })),
-  deleteService: (id) => set((s) => ({
-    services: s.services.filter((svc) => svc.id !== id)
-  })),
+  services: [],
+  fetchServices: async () => {
+    try {
+      set({ loading: true, error: null });
+      const response = await servicesAPI.getAll();
+      set({ services: response.data, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch services:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  addService: async (service) => {
+    try {
+      set({ loading: true, error: null });
+      const response = await servicesAPI.create(service);
+      await get().fetchServices();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to add service:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  updateService: async (id, updates) => {
+    try {
+      set({ loading: true, error: null });
+      await servicesAPI.update(id, updates);
+      await get().fetchServices();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to update service:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  deleteService: async (id) => {
+    try {
+      set({ loading: true, error: null });
+      await servicesAPI.delete(id);
+      await get().fetchServices();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to delete service:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
 
   // Sessions
-  sessions: initialSessions,
+  sessions: [],
   selectedChairId: null,
   selectChair: (chairId) => set({ selectedChairId: chairId }),
-  startSession: (chairId, customerName, customerId, barberId, barberName) => set((s) => ({
-    sessions: [...s.sessions, {
-      id: uuidv4(), chairId, customerName, customerId, barberId, barberName,
-      startTime: new Date().toISOString(), status: 'active',
-      detectedServices: [], totalBill: 0,
-    }]
-  })),
-  addDetectedService: (chairId, service) => set((s) => ({
-    sessions: s.sessions.map((sess) => {
-      if (sess.chairId === chairId && sess.status === 'active') {
-        const newServices = [...sess.detectedServices, service];
-        const totalBill = newServices
-          .filter((ds) => ds.status !== 'rejected')
-          .reduce((sum, ds) => sum + ds.price, 0);
-        return { ...sess, detectedServices: newServices, totalBill };
-      }
-      return sess;
-    })
-  })),
-  updateServiceStatus: (chairId, serviceId, status) => set((s) => ({
-    sessions: s.sessions.map((sess) => {
-      if (sess.chairId === chairId) {
-        const newServices = sess.detectedServices.map((ds) =>
-          ds.id === serviceId ? { ...ds, status } : ds
-        );
-        const totalBill = newServices
-          .filter((ds) => ds.status !== 'rejected')
-          .reduce((sum, ds) => sum + ds.price, 0);
-        return { ...sess, detectedServices: newServices, totalBill };
-      }
-      return sess;
-    })
-  })),
-  completeSession: (chairId) => set((s) => ({
-    sessions: s.sessions.map((sess) =>
-      sess.chairId === chairId ? { ...sess, status: 'completed' as const } : sess
-    )
-  })),
-  markSessionPaid: (chairId) => set((s) => ({
-    sessions: s.sessions.map((sess) =>
-      sess.chairId === chairId ? { ...sess, status: 'paid' as const } : sess
-    )
-  })),
+  fetchSessions: async () => {
+    try {
+      set({ loading: true, error: null });
+      const response = await sessionsAPI.getAll();
+      // Transform backend data to match frontend types
+      const sessions = response.sessions.map((s: any) => ({
+        id: s.id,
+        chairId: s.chair_id,
+        customerName: s.customer_name,
+        customerId: s.customer_id,
+        barberId: s.barber_id,
+        barberName: s.barber_name,
+        startTime: s.start_time,
+        status: s.status,
+        detectedServices: s.detectedServices.map((ds: any) => ({
+          id: ds.id,
+          type: ds.type,
+          confidence: ds.confidence,
+          status: ds.status,
+          detectedAt: ds.detected_at,
+          completedAt: ds.completed_at,
+          price: ds.price,
+        })),
+        totalBill: s.total_bill,
+      }));
+      set({ sessions, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch sessions:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  startSession: async (
+    chairId,
+    customerName,
+    customerId,
+    barberId,
+    barberName,
+  ) => {
+    try {
+      set({ loading: true, error: null });
+      await sessionsAPI.create({
+        chairId,
+        customerName,
+        customerId,
+        barberId,
+        barberName,
+      });
+      await get().fetchSessions();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to start session:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  addDetectedService: async (chairId, service) => {
+    try {
+      set({ loading: true, error: null });
+      const session = get().sessions.find(
+        (s) => s.chairId === chairId && s.status === "active",
+      );
+      if (!session) throw new Error("No active session found");
+
+      await sessionsAPI.addDetectedService(session.id, {
+        type: service.type,
+        confidence: service.confidence,
+        price: service.price,
+      });
+      await get().fetchSessions();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to add detected service:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  updateServiceStatus: async (chairId, serviceId, status) => {
+    try {
+      set({ loading: true, error: null });
+      await sessionsAPI.updateDetectedServiceStatus(serviceId, status);
+      await get().fetchSessions();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to update service status:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  completeSession: async (chairId) => {
+    try {
+      set({ loading: true, error: null });
+      const session = get().sessions.find(
+        (s) => s.chairId === chairId && s.status === "active",
+      );
+      if (!session) throw new Error("No active session found");
+
+      await sessionsAPI.complete(session.id);
+      await get().fetchSessions();
+      set({ loading: false });
+    } catch (error: any) {
+      console.error("Failed to complete session:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  markSessionPaid: async (chairId) => {
+    // This is handled by createTransaction
+    await get().fetchSessions();
+  },
 
   // Transactions
-  transactions: initialTransactions,
-  addTransaction: (transaction) => set((s) => ({
-    transactions: [{ ...transaction, id: uuidv4() }, ...s.transactions]
-  })),
+  transactions: [],
+  fetchTransactions: async () => {
+    try {
+      set({ loading: true, error: null });
+      const response = await transactionsAPI.getAll();
+      // Transform backend data to match frontend types
+      const transactions = response.transactions.map((t: any) => ({
+        id: t.id,
+        sessionId: t.session_id,
+        customerId: t.customer_id,
+        customerName: t.customer_name,
+        barberName: t.barber_name,
+        services: t.services,
+        amount: t.amount,
+        paymentMethod: t.payment_method,
+        timestamp: t.timestamp,
+        status: t.status,
+        transactionId: t.transaction_id,
+      }));
+      set({ transactions, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch transactions:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  addTransaction: async (transaction) => {
+    try {
+      set({ loading: true, error: null });
+      const response = await transactionsAPI.create({
+        sessionId: transaction.sessionId,
+        paymentMethod: transaction.paymentMethod,
+      });
+      await get().fetchTransactions();
+      await get().fetchSessions();
+      set({ loading: false });
+      // Transform response to match frontend Transaction type
+      const tx = response.data;
+      return {
+        id: tx.id,
+        sessionId: tx.session_id,
+        customerId: tx.customer_id,
+        customerName: tx.customer_name,
+        barberName: tx.barber_name,
+        services: tx.services,
+        amount: tx.amount,
+        paymentMethod: tx.payment_method,
+        timestamp: tx.timestamp,
+        status: tx.status,
+        transactionId: tx.transaction_id,
+      };
+    } catch (error: any) {
+      console.error("Failed to add transaction:", error);
+      set({ error: error.message, loading: false });
+      return null;
+    }
+  },
 
   // Activity
   activityLog: [],
-  addActivity: (event) => set((s) => ({
-    activityLog: [{ ...event, id: uuidv4() }, ...s.activityLog].slice(0, 50)
-  })),
+  fetchActivity: async () => {
+    try {
+      set({ loading: true, error: null });
+      const response = await activityAPI.getAll({ limit: "50" });
+      const activityLog = response.data.map((a: any) => ({
+        id: a.id,
+        timestamp: a.timestamp,
+        chairId: a.chair_id,
+        message: a.message,
+        confidence: a.confidence,
+        type: a.type,
+      }));
+      set({ activityLog, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch activity:", error);
+      set({ error: error.message, loading: false });
+    }
+  },
+  addActivity: async (event) => {
+    try {
+      await activityAPI.add(event);
+      await get().fetchActivity();
+    } catch (error: any) {
+      console.error("Failed to add activity:", error);
+    }
+  },
 
   // Demo
   demoRunning: false,
   setDemoRunning: (running) => set({ demoRunning: running }),
+  runDemo: async (chairId) => {
+    try {
+      set({ loading: true, error: null, demoRunning: true });
+      await aiAPI.runDemo(chairId);
+      await Promise.all([get().fetchSessions(), get().fetchActivity()]);
+      set({ loading: false, demoRunning: false });
+    } catch (error: any) {
+      console.error("Failed to run demo:", error);
+      set({ error: error.message, loading: false, demoRunning: false });
+    }
+  },
 
   // Payment
   showPayment: false,

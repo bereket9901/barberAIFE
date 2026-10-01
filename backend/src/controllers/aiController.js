@@ -1,8 +1,8 @@
-import db from '../config/database.js';
+import database from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Simulate AI detection (mock implementation)
-export const simulateDetection = (req, res) => {
+export const simulateDetection = async (req, res) => {
   try {
     const { chairId } = req.body;
 
@@ -11,12 +11,16 @@ export const simulateDetection = (req, res) => {
     }
 
     // Get active session for this chair
-    const activeSessions = db.query('sessions', { chair_id: chairId, status: 'active' });
-    const session = activeSessions[0];
+    const sessionResult = await database.query(
+      "SELECT * FROM sessions WHERE chair_id = $1 AND status = 'active'",
+      [chairId]
+    );
 
-    if (!session) {
+    if (sessionResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'No active session for this chair' });
     }
+
+    const session = sessionResult.rows[0];
 
     // Simulate detection with random service
     const serviceTypes = ['haircut', 'beard_trim', 'hair_wash', 'shaving', 'hair_coloring', 'facial'];
@@ -24,66 +28,65 @@ export const simulateDetection = (req, res) => {
     const confidence = Math.floor(Math.random() * 20) + 80; // 80-99%
 
     // Get service details
-    const services = db.getAll('services');
-    const service = services.find(s => s.type === randomType);
-    
-    if (!service) {
+    const serviceResult = await database.query(
+      'SELECT * FROM services WHERE type = $1',
+      [randomType]
+    );
+
+    if (serviceResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Service not found in database' });
     }
 
-    // Create detected service
-    const detectedService = {
-      id: uuidv4(),
-      session_id: session.id,
-      chair_id: chairId,
-      type: randomType,
-      confidence,
-      status: 'detected',
-      price: service.price,
-      detected_at: new Date().toISOString(),
-      completed_at: null
-    };
+    const service = serviceResult.rows[0];
 
-    db.insert('detected_services', detectedService);
+    // Create detected service
+    const detectedResult = await database.query(
+      `INSERT INTO detected_services (session_id, chair_id, type, confidence, price)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [session.id, chairId, randomType, confidence, service.price]
+    );
 
     // Recalculate total bill
-    const allDetectedServices = db.query('detected_services', { session_id: session.id });
-    const totalBill = allDetectedServices
-      .filter(ds => ds.status !== 'rejected')
-      .reduce((sum, ds) => sum + ds.price, 0);
+    const totalResult = await database.query(
+      `SELECT COALESCE(SUM(price), 0) as total
+       FROM detected_services
+       WHERE session_id = $1 AND status != 'rejected'`,
+      [session.id]
+    );
 
-    db.update('sessions', session.id, { total_bill: totalBill });
+    await database.query(
+      'UPDATE sessions SET total_bill = $1 WHERE id = $2',
+      [totalResult.rows[0].total, session.id]
+    );
 
     // Log activity
-    const activity = {
-      id: uuidv4(),
-      chair_id: chairId,
-      message: `${service.name} detected`,
-      confidence,
-      type: 'service_detect',
-      timestamp: new Date().toISOString()
-    };
-
-    db.insert('activity_log', activity);
+    const activityResult = await database.query(
+      `INSERT INTO activity_log (chair_id, message, confidence, type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [chairId, `${service.name} detected`, confidence, 'service_detect']
+    );
 
     res.json({
       success: true,
       data: {
-        detection: detectedService,
-        activity: activity,
+        detection: detectedResult.rows[0],
+        activity: activityResult.rows[0],
         session: {
           ...session,
-          total_bill: totalBill
+          total_bill: parseInt(totalResult.rows[0].total)
         }
       }
     });
   } catch (error) {
+    console.error('Error simulating detection:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Run full demo simulation
-export const runDemoSimulation = (req, res) => {
+export const runDemoSimulation = async (req, res) => {
   try {
     const { chairId } = req.body;
 
@@ -92,49 +95,40 @@ export const runDemoSimulation = (req, res) => {
     }
 
     // Check if chair has active session
-    const activeSessions = db.query('sessions', { chair_id: chairId, status: 'active' });
-    const existingSession = activeSessions[0];
+    const existingSessionResult = await database.query(
+      "SELECT * FROM sessions WHERE chair_id = $1 AND status = 'active'",
+      [chairId]
+    );
 
-    if (existingSession) {
-      return res.status(400).json({ 
-        success: false, 
+    if (existingSessionResult.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
         error: 'Chair already has an active session',
-        session: existingSession
+        session: existingSessionResult.rows[0]
       });
     }
 
     // Create new session
-    const sessionId = uuidv4();
     const customerNumber = 1045 + Math.floor(Math.random() * 100);
-    const barbers = db.getAll('barbers');
+    const barbersResult = await database.query('SELECT * FROM barbers');
+    const barbers = barbersResult.rows;
     const barber = barbers[parseInt(chairId) - 1] || barbers[0];
 
-    const session = {
-      id: sessionId,
-      chair_id: chairId,
-      customer_name: `Customer #${customerNumber}`,
-      customer_id: String(customerNumber),
-      barber_id: barber?.id || 'b1',
-      barber_name: barber?.name || 'Dawit',
-      start_time: new Date().toISOString(),
-      end_time: null,
-      status: 'active',
-      total_bill: 0,
-      created_at: new Date().toISOString()
-    };
+    const sessionResult = await database.query(
+      `INSERT INTO sessions (chair_id, customer_name, customer_id, barber_id, barber_name)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [chairId, `Customer #${customerNumber}`, String(customerNumber), barber.id, barber.name]
+    );
 
-    db.insert('sessions', session);
+    const session = sessionResult.rows[0];
 
     // Log customer entry
-    const entryActivity = {
-      id: uuidv4(),
-      chair_id: chairId,
-      message: `Customer #${customerNumber} entered`,
-      confidence: 99,
-      type: 'customer_enter',
-      timestamp: new Date().toISOString()
-    };
-    db.insert('activity_log', entryActivity);
+    await database.query(
+      `INSERT INTO activity_log (chair_id, message, confidence, type)
+       VALUES ($1, $2, $3, $4)`,
+      [chairId, `Customer #${customerNumber} entered`, 99, 'customer_enter']
+    );
 
     // Add some detected services
     const servicesToDetect = [
@@ -143,61 +137,61 @@ export const runDemoSimulation = (req, res) => {
       { type: 'hair_wash', confidence: 88 }
     ];
 
-    const allServices = db.getAll('services');
     let totalBill = 0;
 
-    servicesToDetect.forEach(svc => {
-      const service = allServices.find(s => s.type === svc.type);
-      if (service) {
-        const detectedService = {
-          id: uuidv4(),
-          session_id: sessionId,
-          chair_id: chairId,
-          type: svc.type,
-          confidence: svc.confidence,
-          status: 'confirmed',
-          price: service.price,
-          detected_at: new Date().toISOString(),
-          completed_at: new Date().toISOString()
-        };
+    for (const svc of servicesToDetect) {
+      const serviceResult = await database.query(
+        'SELECT * FROM services WHERE type = $1',
+        [svc.type]
+      );
 
-        db.insert('detected_services', detectedService);
+      if (serviceResult.rows.length > 0) {
+        const service = serviceResult.rows[0];
+
+        await database.query(
+          `INSERT INTO detected_services (session_id, chair_id, type, confidence, price, status)
+           VALUES ($1, $2, $3, $4, $5, 'confirmed')`,
+          [session.id, chairId, svc.type, svc.confidence, service.price]
+        );
+
         totalBill += service.price;
 
         // Log activity
-        const activity = {
-          id: uuidv4(),
-          chair_id: chairId,
-          message: `${service.name} detected`,
-          confidence: svc.confidence,
-          type: 'service_detect',
-          timestamp: new Date().toISOString()
-        };
-        db.insert('activity_log', activity);
+        await database.query(
+          `INSERT INTO activity_log (chair_id, message, confidence, type)
+           VALUES ($1, $2, $3, $4)`,
+          [chairId, `${service.name} detected`, svc.confidence, 'service_detect']
+        );
       }
-    });
+    }
 
     // Update session total
-    db.update('sessions', sessionId, { total_bill: totalBill });
+    await database.query(
+      'UPDATE sessions SET total_bill = $1 WHERE id = $2',
+      [totalBill, session.id]
+    );
 
-    const updatedSession = db.getById('sessions', sessionId);
-    const detectedServices = db.query('detected_services', { session_id: sessionId })
-      .sort((a, b) => new Date(a.detected_at) - new Date(b.detected_at));
+    // Get detected services
+    const detectedServicesResult = await database.query(
+      'SELECT * FROM detected_services WHERE session_id = $1 ORDER BY detected_at ASC',
+      [session.id]
+    );
 
     res.status(201).json({
       success: true,
       data: {
-        session: { ...updatedSession, detectedServices },
+        session: { ...session, detectedServices: detectedServicesResult.rows },
         totalBill
       }
     });
   } catch (error) {
+    console.error('Error running demo simulation:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Get detection confidence threshold
-export const getConfidenceThreshold = (req, res) => {
+export const getConfidenceThreshold = async (req, res) => {
   // In a real app, this would be configurable
   res.json({ success: true, data: { threshold: 80 } });
 };
