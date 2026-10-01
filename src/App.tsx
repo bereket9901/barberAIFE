@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import LiveCamerasPage from './components/LiveCamerasPage';
 import ServicesPage from './components/ServicesPage';
 import TransactionsPage from './components/TransactionsPage';
 import AITestPage from './components/AITestPage';
+import LoginPage from './pages/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
 import { useStore } from './store';
 import { cn } from './lib/utils';
 import { Card, CardContent } from './components/ui/card';
@@ -169,22 +172,30 @@ function SettingsPage() {
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard': return <Dashboard />;
-      case 'cameras': return <LiveCamerasPage />;
-      case 'customers': return <CustomersPage />;
-      case 'transactions': return <TransactionsPage />;
-      case 'services': return <ServicesPage />;
-      case 'settings': return <SettingsPage />;
-      case 'ai-test': return <AITestPage />;
-      default: return <Dashboard />;
-    }
-  };
-
   return (
-    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-      {renderPage()}
-    </Layout>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/cameras" element={<LiveCamerasPage />} />
+                <Route path="/customers" element={<CustomersPage />} />
+                <Route path="/transactions" element={<TransactionsPage />} />
+                <Route path="/services" element={<ServicesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/ai-test" element={<AITestPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }

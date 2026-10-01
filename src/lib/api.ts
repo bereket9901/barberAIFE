@@ -7,9 +7,14 @@ interface FetchOptions extends RequestInit {
 
 async function fetchAPI(endpoint: string, options: FetchOptions = {}): Promise<any> {
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get token from localStorage
+  const token = localStorage.getItem('authToken');
+  
   const config: FetchOptions = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,
@@ -20,6 +25,12 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}): Promise<a
     const data = await response.json();
 
     if (!response.ok) {
+      // If unauthorized, clear token and redirect to login
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        window.location.href = '/login';
+      }
       throw new Error(data.error || 'API request failed');
     }
 

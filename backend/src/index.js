@@ -9,6 +9,7 @@ import camerasRouter from './routes/cameras.js';
 import activityRouter from './routes/activity.js';
 import aiRouter from './routes/ai.js';
 import cvRouter from './routes/cv.js';
+import authRouter from './routes/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,6 +45,7 @@ app.get('/health', async (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/transactions', transactionsRouter);
@@ -69,6 +71,10 @@ app.listen(PORT, async () => {
 ║   🗄️  Database: PostgreSQL                                ║
 ║                                                           ║
   ║   📋 Available endpoints:                                 ║
+  ║   • POST   /api/auth/register                             ║
+  ║   • POST   /api/auth/login                                ║
+  ║   • GET    /api/auth/me                                   ║
+  ║   • GET    /api/auth (admin only)                         ║
   ║   • GET    /api/services                                  ║
   ║   • GET    /api/sessions                                  ║
   ║   • GET    /api/transactions                              ║

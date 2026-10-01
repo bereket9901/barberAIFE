@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
+import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
-  Zap, Bell, Search, Cpu
+  Zap, Bell, Search, Cpu, LogOut
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -24,6 +26,13 @@ const navItems = [
 
 export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const { systemStatus } = useStore();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -103,8 +112,20 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center">3</span>
               </button>
-              <div className="h-9 w-9 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-medium">
-                A
+              
+              {/* User Info and Logout */}
+              <div className="flex items-center gap-2 pl-3 border-l border-border">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-foreground">{user?.name || 'Admin'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || 'admin@barberai.com'}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="h-9 w-9 rounded-full gradient-primary flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>

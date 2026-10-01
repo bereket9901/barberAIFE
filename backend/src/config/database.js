@@ -152,6 +152,18 @@ const database = {
           timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL UNIQUE,
+          password_hash VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          role VARCHAR(50) NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'user')),
+          active BOOLEAN DEFAULT true,
+          last_login TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         -- Create indexes for better performance
         CREATE INDEX IF NOT EXISTS idx_sessions_chair ON sessions(chair_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
@@ -159,6 +171,7 @@ const database = {
         CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp);
         CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp);
         CREATE INDEX IF NOT EXISTS idx_activity_chair ON activity_log(chair_id);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       `);
 
       await client.query('COMMIT');
