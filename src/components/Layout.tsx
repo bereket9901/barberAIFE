@@ -1,37 +1,41 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import {
   LayoutDashboard, Camera, Users, Receipt, Scissors, Settings,
-  Zap, Bell, Search, Cpu, LogOut
+  Zap, Bell, Search, Cpu, LogOut, UserCog
 } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: string;
-  onNavigate: (page: string) => void;
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'cameras', label: 'Live Cameras', icon: Camera },
-  { id: 'customers', label: 'Customers', icon: Users },
-  { id: 'transactions', label: 'Transactions', icon: Receipt },
-  { id: 'services', label: 'Services', icon: Scissors },
-  { id: 'ai-test', label: 'AI Test Lab', icon: Cpu },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: '/cameras', label: 'Live Cameras', icon: Camera },
+  { id: '/customers', label: 'Customers', icon: Users },
+  { id: '/transactions', label: 'Transactions', icon: Receipt },
+  { id: '/services', label: 'Services', icon: Scissors },
+  { id: '/ai-test', label: 'AI Test Lab', icon: Cpu },
+  { id: '/admin/users', label: 'User Management', icon: UserCog },
+  { id: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   const { systemStatus } = useStore();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
 
   return (
@@ -56,10 +60,10 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => handleNavigate(item.id)}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
-                currentPage === item.id
+                location.pathname === item.id
                   ? "bg-primary text-primary-foreground shadow-soft"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
@@ -92,15 +96,16 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           <div className="flex items-center justify-between h-16 px-8">
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                {navItems.find(item => item.id === currentPage)?.label || 'Dashboard'}
+                {navItems.find(item => item.id === location.pathname)?.label || 'Dashboard'}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {currentPage === 'dashboard' && 'Real-time AI-powered service detection & billing'}
-                {currentPage === 'cameras' && 'Live monitoring of all barber chairs'}
-                {currentPage === 'customers' && 'Active and recent customer sessions'}
-                {currentPage === 'transactions' && 'Payment history and records'}
-                {currentPage === 'services' && 'Manage services and pricing'}
-                {currentPage === 'settings' && 'System configuration'}
+                {location.pathname === '/dashboard' && 'Real-time AI-powered service detection & billing'}
+                {location.pathname === '/cameras' && 'Live monitoring of all barber chairs'}
+                {location.pathname === '/customers' && 'Active and recent customer sessions'}
+                {location.pathname === '/transactions' && 'Payment history and records'}
+                {location.pathname === '/services' && 'Manage services and pricing'}
+                {location.pathname === '/admin/users' && 'Manage admin users and permissions'}
+                {location.pathname === '/settings' && 'System configuration'}
               </p>
             </div>
 

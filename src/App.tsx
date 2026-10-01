@@ -7,6 +7,7 @@ import ServicesPage from './components/ServicesPage';
 import TransactionsPage from './components/TransactionsPage';
 import AITestPage from './components/AITestPage';
 import LoginPage from './pages/LoginPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useStore } from './store';
 import { cn } from './lib/utils';
@@ -170,8 +171,6 @@ function SettingsPage() {
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -180,7 +179,7 @@ export default function App() {
         path="/*"
         element={
           <ProtectedRoute>
-            <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+            <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -188,9 +187,10 @@ export default function App() {
                 <Route path="/customers" element={<CustomersPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/services" element={<ServicesPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/ai-test" element={<AITestPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
